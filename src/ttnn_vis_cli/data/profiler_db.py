@@ -10,6 +10,8 @@ from .models import (
     BufferPage,
     BufferType,
     Device,
+    L1MemoryEntry,
+    MemoryLayout,
     MemorySummary,
     Operation,
     OperationArgument,
@@ -409,3 +411,189 @@ class ProfilerDB:
                 "SELECT name FROM sqlite_master WHERE type='table'"
             )
             return [row["name"] for row in cursor.fetchall()]
+
+    def get_l1_report(
+        self,
+        operation_id: int,
+        device_id: Optional[int] = None,
+    ) -> list[L1MemoryEntry]:
+        """Get L1 memory report for a specific operation.
+
+        Args:
+            operation_id: Operation ID to get L1 report for.
+            device_id: Optional device ID filter.
+
+        Returns:
+            List of L1MemoryEntry objects sorted by address.
+        """
+        with self._connection() as conn:
+            size_col = self._get_buffer_size_column(conn)
+
+            # Query L1 buffers for this operation
+            # buffer_type = 1 is L1, buffer_type = 3 is L1_SMALL
+            query = f"""
+                SELECT b.address, b.{size_col} as size, b.buffer_type, b.device_id,
+                       b.operation_id
+                FROM buffers b
+                WHERE b.operation_id = ?
+                AND b.buffer_type IN (1, 3)
+            """
+            params: list = [operation_id]
+
+            if device_id is not None:
+                query += " AND b.device_id = ?"
+                params.append(device_id)
+
+            query += " ORDER BY b.address"
+
+            cursor = conn.execute(query, params)
+            rows = cursor.fetchall()
+
+            entries = []
+            for row in rows:
+                # Try to find matching tensor by address
+                tensor_info = self._get_tensor_by_address(
+                    conn, row["address"], operation_id
+                )
+
+                buffer_type_val = row["buffer_type"]
+                buffer_type_str = "L1" if buffer_type_val == 1 else "L1_SMALL"
+
+                entry = L1MemoryEntry(
+                    address=row["address"],
+                    size=row["size"] or 0,
+                    tensor_id=tensor_info.get("tensor_id"),
+                    tensor_name=tensor_info.get("tensor_name", ""),
+                    shape=tensor_info.get("shape", ""),
+                    dtype=tensor_info.get("dtype", ""),
+                    memory_layout=tensor_info.get("memory_layout", ""),
+                    buffer_type=buffer_type_str,
+                    operation_id=row["operation_id"],
+                )
+                entries.append(entry)
+
+            return entries
+
+    def get_previous_l1_report(
+        self,
+        operation_id: int,
+        device_id: Optional[int] = None,
+    ) -> list[L1MemoryEntry]:
+        """Get L1 memory state from previous operation.
+
+        Args:
+            operation_id: Current operation ID (will get report for operation_id - 1).
+            device_id: Optional device ID filter.
+
+        Returns:
+            List of L1MemoryEntry objects for the previous operation.
+        """
+        if operation_id <= 0:
+            return []
+
+        # Find the previous operation ID
+        with self._connection() as conn:
+            cursor = conn.execute(
+                """
+                SELECT operation_id FROM operations
+                WHERE operation_id < ?
+                ORDER BY operation_id DESC
+                LIMIT 1
+                """,
+                (operation_id,),
+            )
+            row = cursor.fetchone()
+            if not row:
+                return []
+
+            prev_operation_id = row["operation_id"]
+
+        return self.get_l1_report(prev_operation_id, device_id)
+
+    def _get_tensor_by_address(
+        self,
+        conn: sqlite3.Connection,
+        address: int,
+        operation_id: int,
+    ) -> dict:
+        """Find tensor information by address for an operation.
+
+        Args:
+            conn: Database connection.
+            address: Memory address to look up.
+            operation_id: Operation ID for context.
+
+        Returns:
+            Dictionary with tensor info or empty dict if not found.
+        """
+        # First try to find tensor in input/output tensors for this operation
+        cursor = conn.execute(
+            """
+            SELECT t.tensor_id, t.shape, t.dtype, t.layout, t.memory_config, t.address
+            FROM tensors t
+            JOIN (
+                SELECT tensor_id FROM input_tensors WHERE operation_id = ?
+                UNION
+                SELECT tensor_id FROM output_tensors WHERE operation_id = ?
+            ) op_tensors ON t.tensor_id = op_tensors.tensor_id
+            WHERE t.address = ?
+            """,
+            (operation_id, operation_id, address),
+        )
+        row = cursor.fetchone()
+
+        if row:
+            return self._extract_tensor_info(row)
+
+        # If not found, try to find any tensor with this address
+        cursor = conn.execute(
+            """
+            SELECT tensor_id, shape, dtype, layout, memory_config, address
+            FROM tensors
+            WHERE address = ?
+            LIMIT 1
+            """,
+            (address,),
+        )
+        row = cursor.fetchone()
+
+        if row:
+            return self._extract_tensor_info(row)
+
+        return {}
+
+    def _extract_tensor_info(self, row: sqlite3.Row) -> dict:
+        """Extract tensor information from database row.
+
+        Args:
+            row: Database row with tensor data.
+
+        Returns:
+            Dictionary with tensor information.
+        """
+        keys = row.keys()
+        memory_layout = ""
+
+        # Try to parse memory_config for layout information
+        if "memory_config" in keys and row["memory_config"]:
+            memory_config = row["memory_config"]
+            # memory_config is typically a string like "MemoryConfig(...)"
+            # Try to extract the layout type
+            if "INTERLEAVED" in memory_config:
+                memory_layout = "INTERLEAVED"
+            elif "HEIGHT_SHARDED" in memory_config:
+                memory_layout = "HEIGHT_SHARDED"
+            elif "WIDTH_SHARDED" in memory_config:
+                memory_layout = "WIDTH_SHARDED"
+            elif "BLOCK_SHARDED" in memory_config:
+                memory_layout = "BLOCK_SHARDED"
+            elif "SINGLE_BANK" in memory_config:
+                memory_layout = "SINGLE_BANK"
+
+        return {
+            "tensor_id": row["tensor_id"],
+            "tensor_name": f"Tensor {row['tensor_id']}",
+            "shape": row["shape"] if "shape" in keys else "",
+            "dtype": row["dtype"] if "dtype" in keys else "",
+            "memory_layout": memory_layout,
+        }

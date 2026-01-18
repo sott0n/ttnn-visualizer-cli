@@ -348,3 +348,34 @@ class ReportInfo:
             "total_duration_ms": round(self.total_duration_ns / 1_000_000, 3),
             "devices": [d.to_dict() for d in self.devices] if self.devices else [],
         }
+
+
+@dataclass
+class L1MemoryEntry:
+    """L1 memory allocation entry with tensor details."""
+
+    address: int
+    size: int
+    tensor_id: Optional[int] = None
+    tensor_name: str = ""
+    shape: str = ""
+    dtype: str = ""
+    memory_layout: str = ""
+    buffer_type: str = "L1"
+    operation_id: Optional[int] = None
+    is_new: bool = False
+
+    def to_dict(self) -> dict:
+        """Convert to dictionary for JSON output."""
+        return {
+            "address": self.address,
+            "size": self.size,
+            "tensor_id": self.tensor_id,
+            "tensor_name": self.tensor_name,
+            "shape": self.shape,
+            "dtype": self.dtype,
+            "memory_layout": self.memory_layout,
+            "buffer_type": self.buffer_type,
+            "operation_id": self.operation_id,
+            "is_new": self.is_new,
+        }

@@ -3,6 +3,7 @@
 from .models import (
     BufferType,
     Device,
+    L1MemoryEntry,
     Operation,
     Tensor,
     Buffer,
@@ -16,6 +17,7 @@ from .perf_csv import PerfCSV
 __all__ = [
     "BufferType",
     "Device",
+    "L1MemoryEntry",
     "Operation",
     "Tensor",
     "Buffer",

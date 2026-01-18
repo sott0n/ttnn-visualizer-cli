@@ -2,7 +2,7 @@
 
 import click
 
-from .commands import devices, info, memory, operations, perf, tensors
+from .commands import devices, info, l1, memory, operations, perf, tensors
 from .output.formatter import OutputFormat
 
 
@@ -42,6 +42,7 @@ cli.add_command(tensors.tensor)
 cli.add_command(memory.memory)
 cli.add_command(memory.buffers)
 cli.add_command(perf.perf)
+cli.add_command(l1.l1_report, name="l1-report")
 
 
 def main() -> None:
