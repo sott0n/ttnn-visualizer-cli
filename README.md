@@ -181,6 +181,54 @@ Buffers
    4  DRAM    0x30d5820  6.0 KB         0            3
 ```
 
+### L1 Memory Report
+
+```bash
+# L1 memory report for an operation (shows previous and current)
+uv run ttnn-vis-cli l1-report 5 --profiler /path/to/db.sqlite
+
+# Without previous operation comparison
+uv run ttnn-vis-cli l1-report 5 --profiler /path/to/db.sqlite --no-previous
+
+# Filter by device
+uv run ttnn-vis-cli l1-report 5 --profiler /path/to/db.sqlite --device 0
+
+# Show addresses in decimal
+uv run ttnn-vis-cli l1-report 5 --profiler /path/to/db.sqlite --no-hex
+```
+
+Output:
+```
+L1 Memory Report - Operation 5: ttnn.matmul
+============================================================
+Device: 0 | Total L1 for Tensors: 1.4 MB
+
+Previous L1 Report (Operation 4: ttnn.add):
+--------------------------------------------------
+Memory Map:
+|██████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░| 28% used
+|   -T12-   -T15-                                  |
+0x0                                          0x160000
+
+Address         Size          Shape                 Dtype         Layout            Tensor
+--------------------------------------------------------------------------------------------------------
+0x00100000      64.0 KB       [1, 32, 128]          BFLOAT16      INTERLEAVED       Tensor 12
+0x00110000      32.0 KB       [1, 128, 64]          BFLOAT16      HEIGHT_SHARDED    Tensor 15
+
+Current L1 Report (Operation 5: ttnn.matmul):
+--------------------------------------------------
+Memory Map:
+|█████████████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░| 42% used
+|   -T12-   -T18-  -T15-                           |
+0x0                                          0x160000
+
+Address         Size          Shape                 Dtype         Layout            Tensor
+--------------------------------------------------------------------------------------------------------
+0x00100000      64.0 KB       [1, 32, 128]          BFLOAT16      INTERLEAVED       Tensor 12
+0x00110000      48.0 KB       [1, 32, 64]           BFLOAT16      BLOCK_SHARDED     Tensor 18 (new)
+0x0011C000      32.0 KB       [1, 128, 64]          BFLOAT16      HEIGHT_SHARDED    Tensor 15
+```
+
 ### Performance
 
 ```bash
