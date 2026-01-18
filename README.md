@@ -25,10 +25,53 @@ uv run ttnn-vis-cli info --profiler /path/to/db.sqlite
 uv run ttnn-vis-cli info --profiler /path/to/db.sqlite --performance /path/to/perf-report
 ```
 
+Output:
+```
+Profiler Report Summary
+========================
+Path:           /path/to/db.sqlite
+Operations:     76
+Tensors:        80
+Buffers:        2,226
+Devices:        1
+Total Duration: 15 ns
+
+Devices:
+  Device 0:
+    Compute Cores: 64 (8x8)
+    L1 Memory:     91.5 MB
+    L1 for Tensors:0.0 B
+```
+
 ### Device Information
 
 ```bash
 uv run ttnn-vis-cli devices --profiler /path/to/db.sqlite
+```
+
+Output:
+```
+Devices
+=======
+
+Device 0
+--------------------
+  Architecture:       N/A
+  Chip ID:            0
+
+  Core Configuration:
+    Total Cores:      64 (8x8)
+    Compute Cores:    64 (8x8)
+    Num Compute:      64
+    Num Storage:      0
+
+  L1 Memory:
+    Worker L1 Size:   1.4 MB
+    Total L1 Memory:  91.5 MB
+    L1 for Tensors:   0.0 B
+    L1 Num Banks:     64
+    L1 Bank Size:     1.3 MB
+    CB Limit:         1.3 MB
 ```
 
 ### Operations
@@ -44,6 +87,32 @@ uv run ttnn-vis-cli operations --profiler /path/to/db.sqlite --top 10
 uv run ttnn-vis-cli operation 1 --profiler /path/to/db.sqlite
 ```
 
+Output (`operations`):
+```
+Operations
+==========
+
+  ID  Name                              Duration    Device
+----  --------------------------------  ----------  --------
+   1  ttnn.from_torch                   0 ns        -
+   2  ttnn.from_torch                   0 ns        -
+  ...
+  33  ttnn.linear                       1 ns        -
+  54  ttnn.matmul                       1 ns        -
+```
+
+Output (`operations --top 5`):
+```
+Top 5 Operations by Duration
+============================
+
+  ID  Name                                                        Duration    Device
+----  ----------------------------------------------------------  ----------  --------
+  48  ttnn.transformer.paged_scaled_dot_product_attention_decode  1 ns        -
+  31  ttnn.all_gather                                             1 ns        -
+  56  ttnn.reduce_scatter                                         1 ns        -
+```
+
 ### Tensors
 
 ```bash
@@ -52,6 +121,20 @@ uv run ttnn-vis-cli tensors --profiler /path/to/db.sqlite
 
 # Tensor details
 uv run ttnn-vis-cli tensor 1 --profiler /path/to/db.sqlite
+```
+
+Output (`tensor 10`):
+```
+Tensor 10
+=========
+
+Shape:         torch.Size([1, 1, 32, 32])
+Data Type:     torch.float32
+Layout:        torch.strided
+Memory Config: N/A
+Device:        N/A
+Address:       N/A
+Buffer Type:   N/A
 ```
 
 ### Memory
@@ -80,9 +163,37 @@ uv run ttnn-vis-cli perf --performance /path/to/perf-report report
 uv run ttnn-vis-cli perf --performance /path/to/perf-report summary
 ```
 
+Output (`perf --top 5`):
+```
+Top 5 Operations by Execution Time
+==================================
+
+Op Name    Op Code    Exec Time      Cores    Math Util %    DRAM R BW %
+---------  ---------  -----------  -------  -------------  -------------
+           Matmul     64.531 µs         64              0              0
+           Matmul     64.374 µs         64              0              0
+           Matmul     64.330 µs         64              0              0
+           Matmul     63.739 µs         64              0              0
+           Matmul     60.819 µs         64              0              0
+```
+
+Output (`perf summary`):
+```
+Performance Summary
+===================
+
+CSV File:           ops_perf_results_2025_07_16_18_41_46.csv
+Total Operations:   68
+Total Exec Time:    1.103 ms
+Avg Exec Time:      16.214 µs
+Max Exec Time:      64.531 µs
+Min Exec Time:      601 ns
+Avg Math Util:      0.0%
+```
+
 ## Output Formats
 
-All commands support multiple output formats:
+All commands support multiple output formats. The `--format` option is a global option and must be specified before the command:
 
 - `--format table` (default): Human-readable table format
 - `--format json`: JSON format for programmatic use
@@ -90,7 +201,29 @@ All commands support multiple output formats:
 
 Example:
 ```bash
-uv run ttnn-vis-cli operations --profiler /path/to/db.sqlite --format json
+uv run ttnn-vis-cli --format json operations --profiler /path/to/db.sqlite --top 3
+```
+
+Output (JSON):
+```json
+{
+  "data": [
+    {
+      "id": 48,
+      "name": "ttnn.transformer.paged_scaled_dot_product_attention_decode",
+      "duration": 1.385,
+      "device_id": null
+    }
+  ],
+  "title": "Top 3 Operations by Duration"
+}
+```
+
+Output (CSV):
+```csv
+id,name,duration,device_id,stack_trace_id,captured_graph_id
+48,ttnn.transformer.paged_scaled_dot_product_attention_decode,1.385,,,
+31,ttnn.all_gather,1.254,,,
 ```
 
 ## Development
