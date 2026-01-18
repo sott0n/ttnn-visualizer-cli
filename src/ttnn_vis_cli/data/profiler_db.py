@@ -246,7 +246,7 @@ class ProfilerDB:
         with self._connection() as conn:
             cursor = conn.execute(query, params)
             rows = cursor.fetchall()
-            return [self._row_to_buffer(row) for row in rows]
+            return [self._row_to_buffer(row, idx) for idx, row in enumerate(rows)]
 
     def get_buffer(self, buffer_id: int) -> Optional[Buffer]:
         """Get a specific buffer by ID."""
@@ -257,13 +257,32 @@ class ProfilerDB:
             row = cursor.fetchone()
             return self._row_to_buffer(row) if row else None
 
-    def _row_to_buffer(self, row: sqlite3.Row) -> Buffer:
-        """Convert database row to Buffer object."""
+    def _row_to_buffer(self, row: sqlite3.Row, index: int = 0) -> Buffer:
+        """Convert database row to Buffer object.
+
+        Args:
+            row: Database row.
+            index: Row index to use as ID if buffer_id column doesn't exist.
+        """
         keys = row.keys()
+
+        # Handle different schema versions
+        if "buffer_id" in keys:
+            buffer_id = row["buffer_id"]
+        else:
+            buffer_id = index
+
+        if "max_size" in keys:
+            max_size = row["max_size"]
+        elif "max_size_per_bank" in keys:
+            max_size = row["max_size_per_bank"]
+        else:
+            max_size = 0
+
         return Buffer(
-            id=row["buffer_id"],
+            id=buffer_id,
             address=row["address"],
-            max_size=row["max_size"],
+            max_size=max_size,
             buffer_type=BufferType.from_int(row["buffer_type"]),
             device_id=row["device_id"],
             operation_id=row["operation_id"] if "operation_id" in keys else None,
@@ -289,15 +308,32 @@ class ProfilerDB:
                 for row in rows
             ]
 
+    def _get_buffer_size_column(self, conn: sqlite3.Connection) -> str:
+        """Get the correct column name for buffer size.
+
+        Different database versions use different column names:
+        - max_size: older schema
+        - max_size_per_bank: newer schema
+        """
+        cursor = conn.execute("PRAGMA table_info(buffers)")
+        columns = [row[1] for row in cursor.fetchall()]
+        if "max_size" in columns:
+            return "max_size"
+        elif "max_size_per_bank" in columns:
+            return "max_size_per_bank"
+        return "max_size"  # fallback
+
     def get_memory_summary(self) -> MemorySummary:
         """Get memory usage summary."""
         summary = MemorySummary()
 
         with self._connection() as conn:
+            size_col = self._get_buffer_size_column(conn)
+
             # Get buffer counts and sizes by type
             cursor = conn.execute(
-                """
-                SELECT buffer_type, COUNT(*) as count, SUM(max_size) as total_size
+                f"""
+                SELECT buffer_type, COUNT(*) as count, SUM({size_col}) as total_size
                 FROM buffers
                 GROUP BY buffer_type
                 """

@@ -149,6 +149,38 @@ uv run ttnn-vis-cli buffers --profiler /path/to/db.sqlite --type L1
 uv run ttnn-vis-cli buffers --profiler /path/to/db.sqlite --operation 1
 ```
 
+Output (`memory`):
+```
+Memory Usage Summary
+====================
+
+L1 Memory:
+  Used:         1.8 MB
+  Total:        0.0 B
+  Usage:        0.0%
+  Buffer Count: 330
+
+DRAM Memory:
+  Used:         489.8 MB
+  Total:        0.0 B
+  Usage:        0.0%
+  Buffer Count: 1,896
+```
+
+Output (`buffers --limit 5`):
+```
+Buffers
+=======
+
+  ID  Type    Address    Size      Device    Operation
+----  ------  ---------  ------  --------  -----------
+   0  DRAM    0x30d4020  6.0 KB         0            1
+   1  DRAM    0x30d5820  6.0 KB         0            2
+   2  DRAM    0x30d4020  6.0 KB         0            2
+   3  L1      0x16d800   2.0 KB         0            3
+   4  DRAM    0x30d5820  6.0 KB         0            3
+```
+
 ### Performance
 
 ```bash
