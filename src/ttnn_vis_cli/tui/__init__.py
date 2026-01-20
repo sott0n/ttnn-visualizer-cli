@@ -1,5 +1,5 @@
 """TTNN Visualizer TUI package."""
 
-from .app import TTNNVisualizerApp
+from .app import TTNNVisualizerApp, run_tui
 
-__all__ = ["TTNNVisualizerApp"]
+__all__ = ["TTNNVisualizerApp", "run_tui"]

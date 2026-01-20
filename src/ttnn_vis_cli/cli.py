@@ -1,7 +1,6 @@
 """Main CLI entry point for TTNN Visualizer CLI."""
 
 from pathlib import Path
-from typing import Optional
 
 import click
 
@@ -61,7 +60,7 @@ cli.add_command(l1.l1_report, name="l1-report")
     type=click.Path(exists=True, path_type=Path),
     help="Path to performance report directory or CSV file",
 )
-def tui(profiler: Optional[Path], performance: Optional[Path]) -> None:
+def tui(profiler: Path | None, performance: Path | None) -> None:
     """Launch interactive TUI for browsing profiling data.
 
     Example:
@@ -69,7 +68,7 @@ def tui(profiler: Optional[Path], performance: Optional[Path]) -> None:
         ttnn-vis-cli tui -p samples/profiler/db.sqlite -P samples/performance
     """
     try:
-        from .tui import TTNNVisualizerApp
+        from .tui import run_tui
     except ImportError:
         click.echo(
             "Error: TUI dependencies not installed.\n"
@@ -85,8 +84,7 @@ def tui(profiler: Optional[Path], performance: Optional[Path]) -> None:
         )
         raise SystemExit(1)
 
-    app = TTNNVisualizerApp(profiler_db=profiler, perf_data=performance)
-    app.run()
+    run_tui(profiler_db=profiler, perf_data=performance)
 
 
 def main() -> None:

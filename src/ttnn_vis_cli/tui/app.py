@@ -1,7 +1,6 @@
 """Main TUI application for TTNN Visualizer."""
 
 from pathlib import Path
-from typing import Optional
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
@@ -11,21 +10,21 @@ from textual.widgets import Footer, Header, Static, TabbedContent, TabPane
 from .screens import DashboardScreen
 
 
-class OperationsTab(Static):
+class OperationsTab(Container):
     """Operations tab placeholder."""
 
     def compose(self) -> ComposeResult:
         yield Static("Operations Browser - Coming in Phase 3", id="operations-content")
 
 
-class TensorsTab(Static):
+class TensorsTab(Container):
     """Tensors tab placeholder."""
 
     def compose(self) -> ComposeResult:
         yield Static("Tensors Browser - Coming in Phase 3", id="tensors-content")
 
 
-class PerformanceTab(Static):
+class PerformanceTab(Container):
     """Performance tab placeholder."""
 
     def compose(self) -> ComposeResult:
@@ -50,8 +49,8 @@ class TTNNVisualizerApp(App):
 
     def __init__(
         self,
-        profiler_db: Optional[Path] = None,
-        perf_data: Optional[Path] = None,
+        profiler_db: Path | None = None,
+        perf_data: Path | None = None,
     ):
         """Initialize the TUI application.
 
@@ -86,6 +85,10 @@ class TTNNVisualizerApp(App):
         Args:
             tab_id: The ID of the tab to switch to.
         """
+        valid_tabs = {"dashboard", "operations", "tensors", "performance"}
+        if tab_id not in valid_tabs:
+            self.notify(f"Unknown tab: {tab_id}", severity="warning")
+            return
         tabbed_content = self.query_one(TabbedContent)
         tabbed_content.active = tab_id
 
@@ -104,8 +107,8 @@ class TTNNVisualizerApp(App):
 
 
 def run_tui(
-    profiler_db: Optional[Path] = None,
-    perf_data: Optional[Path] = None,
+    profiler_db: Path | None = None,
+    perf_data: Path | None = None,
 ) -> None:
     """Run the TUI application.
 
