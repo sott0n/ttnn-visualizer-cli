@@ -208,8 +208,74 @@ def summary(ctx: click.Context) -> None:
     default=100,
     help="Maximum number of operations to display (default: 100)",
 )
+@click.option(
+    "--sort-by",
+    "-s",
+    type=click.Choice([
+        "id", "device_time", "op_to_op_gap", "cores",
+        "dram_percent", "flops_percent", "op_code"
+    ]),
+    default=None,
+    help="Sort results by column",
+)
+@click.option(
+    "--desc/--asc",
+    default=True,
+    help="Sort direction (default: descending)",
+)
+@click.option(
+    "--op-code",
+    "-o",
+    type=str,
+    default=None,
+    help="Filter by op code (case-insensitive, partial match)",
+)
+@click.option(
+    "--device",
+    "-d",
+    type=int,
+    default=None,
+    help="Filter by device ID",
+)
+@click.option(
+    "--buffer-type",
+    "-b",
+    type=click.Choice(["L1", "DRAM", "System"], case_sensitive=False),
+    default=None,
+    help="Filter by buffer type",
+)
+@click.option(
+    "--bound",
+    "-B",
+    type=click.Choice(["Compute", "Memory", "Balanced"], case_sensitive=False),
+    default=None,
+    help="Filter by bound type",
+)
+@click.option(
+    "--min-time",
+    type=float,
+    default=None,
+    help="Minimum device time in microseconds",
+)
+@click.option(
+    "--max-time",
+    type=float,
+    default=None,
+    help="Maximum device time in microseconds",
+)
 @click.pass_context
-def perf_report(ctx: click.Context, limit: int) -> None:
+def perf_report(
+    ctx: click.Context,
+    limit: int,
+    sort_by: str | None,
+    desc: bool,
+    op_code: str | None,
+    device: int | None,
+    buffer_type: str | None,
+    bound: str | None,
+    min_time: float | None,
+    max_time: float | None,
+) -> None:
     """Display detailed performance report table.
 
     Shows comprehensive performance data with columns:
@@ -217,6 +283,16 @@ def perf_report(ctx: click.Context, limit: int) -> None:
     Device Time, Op-to-Op Gap, Cores, DRAM, DRAM %, FLOPs, FLOPs %, Math Fidelity
 
     Includes summary totals at the bottom.
+
+    Examples:
+        # Sort by device time descending
+        perf --performance ./perf perf-report --sort-by device_time
+
+        # Filter by op code
+        perf --performance ./perf perf-report --op-code Matmul
+
+        # Filter compute-bound operations with min time
+        perf --performance ./perf perf-report --bound Compute --min-time 10
     """
     performance_path = ctx.obj.get("performance_path")
     if not performance_path:
@@ -232,9 +308,52 @@ def perf_report(ctx: click.Context, limit: int) -> None:
     except Exception as e:
         raise click.ClickException(str(e))
 
-    ops = perf_data.get_operations(limit=limit)
+    # Get all operations first (we'll apply limit after filtering/sorting)
+    ops = perf_data.get_operations(limit=None)
     # Filter out signpost rows
     ops = [op for op in ops if op.op_name != "signpost"]
+
+    # Apply filters
+    if op_code:
+        ops = [op for op in ops if op_code.lower() in (op.op_code or "").lower()]
+
+    if device is not None:
+        ops = [op for op in ops if op.device_id == device]
+
+    if buffer_type:
+        ops = [op for op in ops if (op.buffer_type or "").upper() == buffer_type.upper()]
+
+    if bound:
+        ops = [op for op in ops if (op.bound or "").lower() == bound.lower()]
+
+    if min_time is not None:
+        # Convert microseconds to nanoseconds for comparison
+        min_time_ns = min_time * 1000
+        ops = [op for op in ops if op.execution_time_ns >= min_time_ns]
+
+    if max_time is not None:
+        # Convert microseconds to nanoseconds for comparison
+        max_time_ns = max_time * 1000
+        ops = [op for op in ops if op.execution_time_ns <= max_time_ns]
+
+    # Apply sorting
+    if sort_by:
+        sort_key_map = {
+            "id": lambda x: x.global_call_count or 0,
+            "device_time": lambda x: x.execution_time_ns,
+            "op_to_op_gap": lambda x: x.op_to_op_gap_ns,
+            "cores": lambda x: x.core_count or 0,
+            "dram_percent": lambda x: x.dram_bw_util_percent or 0,
+            "flops_percent": lambda x: x.fpu_util_percent or 0,
+            "op_code": lambda x: (x.op_code or "").lower(),
+        }
+        if sort_by in sort_key_map:
+            ops.sort(key=sort_key_map[sort_by], reverse=desc)
+
+    # Apply limit after filtering and sorting
+    if limit:
+        ops = ops[:limit]
+
     if not ops:
         click.echo("No performance data found")
         return

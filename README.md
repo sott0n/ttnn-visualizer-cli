@@ -240,6 +240,25 @@ uv run ttnn-vis-cli perf --performance /path/to/perf-report --top 10
 uv run ttnn-vis-cli perf --performance /path/to/perf-report perf-report
 uv run ttnn-vis-cli perf --performance /path/to/perf-report perf-report -l 20
 
+# Sort by device time (descending by default)
+uv run ttnn-vis-cli perf --performance /path/to/perf-report perf-report --sort-by device_time
+uv run ttnn-vis-cli perf --performance /path/to/perf-report perf-report --sort-by device_time --asc
+
+# Filter by op code
+uv run ttnn-vis-cli perf --performance /path/to/perf-report perf-report --op-code Matmul
+
+# Filter by bound type (Compute, Memory, Balanced)
+uv run ttnn-vis-cli perf --performance /path/to/perf-report perf-report --bound Compute
+
+# Filter by buffer type (L1, DRAM, System)
+uv run ttnn-vis-cli perf --performance /path/to/perf-report perf-report --buffer-type L1
+
+# Filter by device time range (in microseconds)
+uv run ttnn-vis-cli perf --performance /path/to/perf-report perf-report --min-time 10 --max-time 100
+
+# Combine sort and filter
+uv run ttnn-vis-cli perf --performance /path/to/perf-report perf-report --op-code Conv2d --sort-by device_time -l 10
+
 # Performance summary
 uv run ttnn-vis-cli perf --performance /path/to/perf-report summary
 ```
@@ -276,6 +295,22 @@ ID        Total     Bound     Op Code               Device ID    Buffer Type    
 9216      9         Compute   Conv2d                0            L1             ROW_MAJOR  85.299 µs      915.767 ms      130       -         -         20586     24.1       LoFi
 ────────  ────────  ────────  ────────              ────────     ────────       ────────   ────────       ────────        ────────  ────────  ────────  ────────  ────────   ────────
 Total     9                   5 types                                                      341.411 µs     5.876 s
+```
+
+Output (`perf perf-report --op-code Conv2d --sort-by device_time -l 5`):
+```
+Performance Report
+==================
+
+ID        Total     Bound     Op Code    Device ID    Buffer Type    Layout     Device Time    Op-to-Op Gap    Cores     DRAM      DRAM %    FLOPs     FLOPs %    Math Fidelity
+--------  --------  --------  ---------  -----------  -------------  ---------  -------------  --------------  --------  --------  --------  --------  ---------  ---------------
+9216      1         Compute   Conv2d     0            L1             ROW_MAJOR  85.299 µs      915.767 ms      130       -         -         20586     24.1       LoFi
+30720     2         Compute   Conv2d     0            L1             ROW_MAJOR  45.348 µs      818.453 ms      130       -         -         11580     25.5       LoFi
+25600     3         Compute   Conv2d     0            L1             ROW_MAJOR  45.146 µs      818.749 ms      130       -         -         11580     25.6       LoFi
+16384     4         Compute   Conv2d     0            L1             ROW_MAJOR  41.591 µs      926.234 ms      130       -         -         11580     27.8       LoFi
+35840     5         Compute   Conv2d     0            L1             ROW_MAJOR  30.504 µs      835.500 ms      130       -         -         11580     38.0       LoFi
+────────  ────────  ────────  ────────   ────────     ────────       ────────   ────────       ────────        ────────  ────────  ────────  ────────  ────────   ────────
+Total     5                   1 types                                           247.888 µs     4.315 s
 ```
 
 Output (`perf summary`):
