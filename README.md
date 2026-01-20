@@ -327,6 +327,142 @@ Min Exec Time:      601 ns
 Avg Math Util:      0.0%
 ```
 
+### Performance Analysis
+
+The `perf analysis` subcommand group provides detailed performance insights:
+
+```bash
+# Operation type distribution
+uv run ttnn-vis-cli perf --performance /path/to/perf-report analysis op-distribution
+
+# Core efficiency analysis
+uv run ttnn-vis-cli perf --performance /path/to/perf-report analysis core-efficiency
+
+# Matmul operations analysis
+uv run ttnn-vis-cli perf --performance /path/to/perf-report analysis matmul
+
+# Conv operations analysis
+uv run ttnn-vis-cli perf --performance /path/to/perf-report analysis conv
+
+# Identify bottlenecks
+uv run ttnn-vis-cli perf --performance /path/to/perf-report analysis bottlenecks
+
+# Overall summary
+uv run ttnn-vis-cli perf --performance /path/to/perf-report analysis summary
+```
+
+Output (`analysis op-distribution`):
+```
+Operation Type Distribution
+===========================
+
+Op Code                     Count   Total Time     Avg Time   % Time  % Count
+--------------------------------------------------------------------------------
+Conv2d                         20   739.577 µs    36.979 µs    34.1%    17.2%
+Matmul                         34   582.365 µs    17.128 µs    26.9%    29.3%
+HaloDeviceOperation            22   278.217 µs    12.646 µs    12.8%    19.0%
+...
+
+Summary:
+  Total: 116 operations, 2.167 ms
+  Top 3 by time: Conv2d (34.1%), Matmul (26.9%), HaloDeviceOperation (12.8%)
+```
+
+Output (`analysis core-efficiency`):
+```
+Core Efficiency Analysis
+========================
+
+ Cores  Op Count   Total Time     Avg Time  Avg FPU% Bound Distribution
+------------------------------------------------------------------------------------------
+    64         3    47.310 µs    15.770 µs     58.4% Compute: 2, Memory: 0, Balanced: 1
+   128        10   468.002 µs    46.800 µs     22.1% Compute: 8, Memory: 0, Balanced: 2
+...
+
+Insights:
+  - 64-core operations show highest FPU utilization (58.4%)
+  - Most operations are compute-bound (84/116 = 72%)
+```
+
+Output (`analysis matmul`):
+```
+Matmul Operations Analysis
+===========================
+
+      ID  Cores  Device Time   Ideal Time  Efficiency    FPU% Bound
+---------------------------------------------------------------------------
+   95232     80    22.849 µs    10.294 µs       45.1%    45.1 Compute
+   57344    112    21.194 µs    10.294 µs       48.6%    48.6 Compute
+...
+
+Summary:
+  Total: 34 Matmul operations
+  Total Time: 582.365 µs (26.9% of all ops)
+  Avg Efficiency: 42.8% (Ideal/Device ratio)
+  Avg FPU Utilization: 33.3%
+
+Efficiency Distribution:
+  High (>80%):      1 ops (2.9%)
+  Medium (50-80%):   8 ops (23.5%)
+  Low (<50%):      25 ops (73.5%)
+
+Math Fidelity:
+  LoFi: 34 ops
+```
+
+Output (`analysis bottlenecks`):
+```
+Performance Bottlenecks
+=======================
+
+Low Efficiency Operations (<50%):
+        ID  Op Code               Device Time   Efficiency  Issue
+  ------------------------------------------------------------------------------------------
+     11264  Pool2D                 170.214 µs         8.2%  Low FPU utilization (8.2%)
+      5120  Transpose              104.497 µs         2.8%  Low FPU utilization (2.8%)
+...
+
+High Op-to-Op Gap (>100ms):
+        ID  Op Code                       Gap  Possible Cause
+  --------------------------------------------------------------------------------
+    103424  Matmul                 981.528 ms  Host overhead / data transfer
+...
+
+Summary:
+  Low efficiency operations: 88
+  High op-to-op gap operations: 60
+  Memory-bound low utilization: 0
+```
+
+Output (`analysis summary`):
+```
+Performance Analysis Summary
+============================
+
+Overview:
+  Total Operations: 116
+  Total Device Time: 2.167 ms
+  Total Op-to-Op Gap: 47.907 s
+
+Operation Distribution:
+  Compute-bound: 84 ops (72.4%)
+  Memory-bound: 10 ops (8.6%)
+  Balanced: 22 ops (19.0%)
+
+Top Op Codes by Time:
+  1. Conv2d          (20 ops):   739.577 µs (34.1%)
+  2. Matmul          (34 ops):   582.365 µs (26.9%)
+  3. HaloDeviceOperation (22 ops):   278.217 µs (12.8%)
+
+Utilization:
+  Avg FPU Utilization: 49.4%
+  Avg DRAM Utilization: 0.0%
+
+Potential Issues:
+  - 88 operations with <50% efficiency
+  - 60 operations with op-to-op gap >100ms
+```
+
 ## Output Formats
 
 All commands support multiple output formats. The `--format` option is a global option and must be specified before the command:

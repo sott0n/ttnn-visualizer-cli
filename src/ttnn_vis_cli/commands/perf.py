@@ -5,6 +5,7 @@ from tabulate import tabulate
 
 from ..data.perf_csv import PerfCSV
 from ..output.formatter import OutputFormat, OutputFormatter, format_ns
+from .analysis import analysis as analysis_group
 
 
 @click.group(invoke_without_command=True)
@@ -445,3 +446,7 @@ def perf_report(
     # Add rows with summary
     all_rows = rows + [["─" * 8] * len(headers), summary_row]
     click.echo(tabulate(all_rows, headers=headers, tablefmt="simple"))
+
+
+# Register analysis subcommand group
+perf.add_command(analysis_group)
