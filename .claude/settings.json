@@ -7,7 +7,7 @@
       "Bash(export PATH=\"$HOME/.local/bin:$PATH\")",
       "Bash(uv run:*)",
       "Bash(python -m ttnn_vis_cli.cli:*)",
-      "Bash(git:*)",
+      "Bash(git:*)"
     ]
   },
   "includeCoAuthoredBy": true
