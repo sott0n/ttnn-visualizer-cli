@@ -236,8 +236,9 @@ Address         Size          Shape                 Dtype         Layout        
 uv run ttnn-vis-cli perf --performance /path/to/perf-report
 uv run ttnn-vis-cli perf --performance /path/to/perf-report --top 10
 
-# Detailed performance report
-uv run ttnn-vis-cli perf --performance /path/to/perf-report report
+# Detailed performance report table
+uv run ttnn-vis-cli perf --performance /path/to/perf-report perf-report
+uv run ttnn-vis-cli perf --performance /path/to/perf-report perf-report -l 20
 
 # Performance summary
 uv run ttnn-vis-cli perf --performance /path/to/perf-report summary
@@ -255,6 +256,26 @@ Op Name    Op Code    Exec Time      Cores    Math Util %    DRAM R BW %
            Matmul     64.330 µs         64              0              0
            Matmul     63.739 µs         64              0              0
            Matmul     60.819 µs         64              0              0
+```
+
+Output (`perf perf-report -l 10`):
+```
+Performance Report
+==================
+
+ID        Total     Bound     Op Code               Device ID    Buffer Type    Layout     Device Time    Op-to-Op Gap    Cores     DRAM      DRAM %    FLOPs     FLOPs %    Math Fidelity
+--------  --------  --------  --------------------  -----------  -------------  ---------  -------------  --------------  --------  --------  --------  --------  ---------  ---------------
+1024      1         Compute   Pad                   0            L1             ROW_MAJOR  14.325 µs      -               128       -         -         12926     90.2       -
+2048      2         Compute   Transpose             0            L1             ROW_MAJOR  9.747 µs       659.144 ms      128       -         -         2543      26.1       HiFi4
+3072      3         Compute   Pad                   0            L1             ROW_MAJOR  4.564 µs       661.436 ms      128       -         -         2895      63.4       -
+4096      4         Compute   Transpose             0            L1             ROW_MAJOR  16.000 µs      692.271 ms      128       -         -         2895      18.1       -
+5120      5         Compute   Transpose             0            L1             ROW_MAJOR  104.497 µs     677.559 ms      128       -         -         2895      2.8        HiFi4
+6144      6         Compute   Transpose             0            L1             ROW_MAJOR  43.113 µs      751.440 ms      128       -         -         2895      6.7        -
+7168      7         Compute   SliceDeviceOperation  0            L1             ROW_MAJOR  46.750 µs      754.352 ms      128       -         -         2366      5.1        -
+8192      8         Balanced  HaloDeviceOperation   0            L1             ROW_MAJOR  17.116 µs      764.166 ms      128       -         -         1         0.0        -
+9216      9         Compute   Conv2d                0            L1             ROW_MAJOR  85.299 µs      915.767 ms      130       -         -         20586     24.1       LoFi
+────────  ────────  ────────  ────────              ────────     ────────       ────────   ────────       ────────        ────────  ────────  ────────  ────────  ────────   ────────
+Total     9                   5 types                                                      341.411 µs     5.876 s
 ```
 
 Output (`perf summary`):
