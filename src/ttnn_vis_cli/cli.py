@@ -4,7 +4,17 @@ from pathlib import Path
 
 import click
 
-from .commands import devices, info, l1, memory, operations, perf, sharding, tensors
+from .commands import (
+    devices,
+    host_overhead,
+    info,
+    l1,
+    memory,
+    operations,
+    perf,
+    sharding,
+    tensors,
+)
 from .output.formatter import OutputFormat
 
 
@@ -46,6 +56,7 @@ cli.add_command(memory.buffers)
 cli.add_command(perf.perf)
 cli.add_command(l1.l1_report, name="l1-report")
 cli.add_command(sharding.sharding)
+cli.add_command(host_overhead.host_overhead, name="host-overhead")
 
 
 @cli.command()
