@@ -7,21 +7,7 @@ from textual.binding import Binding
 from textual.containers import Container
 from textual.widgets import Footer, Header, Static, TabbedContent, TabPane
 
-from .screens import DashboardScreen
-
-
-class OperationsTab(Container):
-    """Operations tab placeholder."""
-
-    def compose(self) -> ComposeResult:
-        yield Static("Operations Browser - Coming in Phase 3", id="operations-content")
-
-
-class TensorsTab(Container):
-    """Tensors tab placeholder."""
-
-    def compose(self) -> ComposeResult:
-        yield Static("Tensors Browser - Coming in Phase 3", id="tensors-content")
+from .screens import DashboardScreen, OperationsScreen, TensorsScreen
 
 
 class PerformanceTab(Container):
@@ -72,9 +58,9 @@ class TTNNVisualizerApp(App):
                     perf_data=self.perf_data,
                 )
             with TabPane("Operations", id="operations"):
-                yield OperationsTab()
+                yield OperationsScreen(profiler_db=self.profiler_db)
             with TabPane("Tensors", id="tensors"):
-                yield TensorsTab()
+                yield TensorsScreen(profiler_db=self.profiler_db)
             with TabPane("Performance", id="performance"):
                 yield PerformanceTab()
         yield Footer()

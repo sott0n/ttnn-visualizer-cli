@@ -32,15 +32,53 @@ TabPane {
 }
 
 /* Tab placeholders */
-OperationsTab, TensorsTab, PerformanceTab {
+PerformanceTab {
     width: 100%;
     height: 100%;
 }
 
-#operations-content, #tensors-content, #performance-content {
+#performance-content {
     text-align: center;
     padding: 2;
     color: $text-muted;
+}
+
+/* Operations and Tensors screens */
+OperationsScreen, TensorsScreen {
+    width: 100%;
+    height: 1fr;
+}
+
+.section-title {
+    padding: 0 0 1 0;
+}
+
+.operations-layout, .tensors-layout {
+    height: 1fr;
+}
+
+.operations-table-container, .tensors-table-container {
+    width: 60%;
+    height: 100%;
+}
+
+.detail-panel {
+    width: 40%;
+    height: 100%;
+    padding: 0 0 0 1;
+    border-left: solid $primary;
+}
+
+#operations-table, #tensors-table {
+    height: 100%;
+}
+
+DataTable {
+    height: 100%;
+}
+
+DataTable > .datatable--cursor {
+    background: $primary;
 }
 
 /* Dashboard specific styles */

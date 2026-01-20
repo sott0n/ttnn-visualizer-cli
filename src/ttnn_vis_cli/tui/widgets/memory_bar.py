@@ -1,9 +1,8 @@
 """Memory usage bar widget."""
 
 from textual.app import ComposeResult
-from textual.containers import Horizontal
 from textual.widget import Widget
-from textual.widgets import Static, ProgressBar
+from textual.widgets import ProgressBar, Static
 
 
 class MemoryBar(Widget):
