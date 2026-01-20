@@ -1,0 +1,16 @@
+{
+  "enabledPlugins": {
+    "code-simplifier@claude-plugins-official": true
+  },
+  "permissions": {
+    "allow": [
+      "Bash(export PATH=\"$HOME/.local/bin:$PATH\")",
+      "Bash(uv run pytest:*)",
+      "Bash(uv run:*)",
+      "Bash(git add:*)",
+      "Bash(python -m ttnn_vis_cli.cli:*)",
+      "Bash(git commit:*)",
+      "Bash(git push)"
+    ]
+  }
+}
