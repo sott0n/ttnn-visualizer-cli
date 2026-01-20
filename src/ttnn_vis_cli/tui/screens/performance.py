@@ -86,7 +86,7 @@ class PerformanceScreen(Container):
                 with Container(classes="performance-table-container"):
                     yield DataTable(id="performance-table", cursor_type="row")
                 with Container(id="performance-detail", classes="detail-panel"):
-                    yield Static("Select an operation to view details", id="perf-detail-content")
+                    yield Static("Select an operation to view details", id="performance-detail-content")
 
     def on_mount(self) -> None:
         """Load data when mounted."""

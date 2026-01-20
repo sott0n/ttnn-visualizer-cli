@@ -62,6 +62,26 @@ uv run ttnn-vis-cli perf --performance /path/to/perf-report analysis summary
 uv run ttnn-vis-cli perf --performance /path/to/perf-report analysis bottlenecks
 ```
 
+### Interactive TUI
+
+Launch an interactive terminal UI for browsing and exploring profiling data:
+
+```bash
+# Launch TUI with profiler data
+uv run ttnn-vis-cli tui --profiler /path/to/db.sqlite
+
+# Launch with both profiler and performance data
+uv run ttnn-vis-cli tui --profiler /path/to/db.sqlite --performance /path/to/perf-report
+```
+
+The TUI provides four tabs:
+- **Dashboard**: Overview of profiler report and performance summary
+- **Operations**: Browse operations with details panel
+- **Tensors**: Browse tensors with memory configuration details
+- **Performance**: Performance analysis with metrics and bound information
+
+Keyboard shortcuts: `d` Dashboard, `o` Operations, `t` Tensors, `p` Performance, `q` Quit, `?` Help
+
 ## Output Formats
 
 All commands support `--format table|json|csv`. The option must be specified before the command:
@@ -98,6 +118,7 @@ For detailed command documentation and examples, see:
 | `perf analysis conv` | Conv operations analysis |
 | `perf analysis bottlenecks` | Bottleneck detection |
 | `perf analysis summary` | Overall analysis summary |
+| `tui` | Interactive TUI for data browsing |
 
 ## Development
 

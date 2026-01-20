@@ -73,14 +73,22 @@ class TTNNVisualizerApp(App):
     def action_show_help(self) -> None:
         """Show help dialog."""
         self.notify(
-            "Keyboard shortcuts:\n"
-            "  d - Dashboard\n"
-            "  o - Operations\n"
-            "  t - Tensors\n"
-            "  p - Performance\n"
+            "Navigation:\n"
+            "  d - Dashboard tab\n"
+            "  o - Operations tab\n"
+            "  t - Tensors tab\n"
+            "  p - Performance tab\n"
+            "  Tab - Next tab\n"
+            "\n"
+            "Table:\n"
+            "  ↑/↓ - Navigate rows\n"
+            "  Enter - Select row\n"
+            "\n"
+            "General:\n"
+            "  ? - This help\n"
             "  q - Quit",
             title="Help",
-            timeout=5,
+            timeout=10,
         )
 
 
