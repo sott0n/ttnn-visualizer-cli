@@ -4,17 +4,9 @@ from pathlib import Path
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
-from textual.containers import Container
-from textual.widgets import Footer, Header, Static, TabbedContent, TabPane
+from textual.widgets import Footer, Header, TabbedContent, TabPane
 
-from .screens import DashboardScreen, OperationsScreen, TensorsScreen
-
-
-class PerformanceTab(Container):
-    """Performance tab placeholder."""
-
-    def compose(self) -> ComposeResult:
-        yield Static("Performance Analysis - Coming in Phase 4", id="performance-content")
+from .screens import DashboardScreen, OperationsScreen, PerformanceScreen, TensorsScreen
 
 
 class TTNNVisualizerApp(App):
@@ -62,7 +54,7 @@ class TTNNVisualizerApp(App):
             with TabPane("Tensors", id="tensors"):
                 yield TensorsScreen(profiler_db=self.profiler_db)
             with TabPane("Performance", id="performance"):
-                yield PerformanceTab()
+                yield PerformanceScreen(perf_data=self.perf_data)
         yield Footer()
 
     def action_switch_tab(self, tab_id: str) -> None:
