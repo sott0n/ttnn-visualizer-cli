@@ -597,3 +597,25 @@ class ProfilerDB:
             "dtype": row["dtype"] if "dtype" in keys else "",
             "memory_layout": memory_layout,
         }
+
+    def get_operations_with_tensors(
+        self,
+        limit: Optional[int] = None,
+    ) -> list[tuple[int, str, list[Tensor], list[Tensor]]]:
+        """Get operations with their input and output tensors.
+
+        Args:
+            limit: Maximum number of operations to return.
+
+        Returns:
+            List of (operation_id, operation_name, input_tensors, output_tensors).
+        """
+        operations = self.get_operations(limit=limit)
+        results = []
+
+        for op in operations:
+            input_tensors = self.get_input_tensors(op.id)
+            output_tensors = self.get_output_tensors(op.id)
+            results.append((op.id, op.name, input_tensors, output_tensors))
+
+        return results
