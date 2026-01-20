@@ -1,6 +1,7 @@
 """Performance commands - display performance information."""
 
 import click
+from tabulate import tabulate
 
 from ..data.perf_csv import PerfCSV
 from ..output.formatter import OutputFormat, OutputFormatter, format_ns
@@ -197,3 +198,131 @@ def summary(ctx: click.Context) -> None:
         output_lines.append(f"Avg Math Util:      {summary_data.get('avg_math_utilization', 0):.1f}%")
 
         click.echo("\n".join(output_lines))
+
+
+@perf.command(name="perf-report")
+@click.option(
+    "--limit",
+    "-l",
+    type=int,
+    default=100,
+    help="Maximum number of operations to display (default: 100)",
+)
+@click.pass_context
+def perf_report(ctx: click.Context, limit: int) -> None:
+    """Display detailed performance report table.
+
+    Shows comprehensive performance data with columns:
+    ID, Total, Bound, Op Code, Device ID, Buffer Type, Layout,
+    Device Time, Op-to-Op Gap, Cores, DRAM, DRAM %, FLOPs, FLOPs %, Math Fidelity
+
+    Includes summary totals at the bottom.
+    """
+    performance_path = ctx.obj.get("performance_path")
+    if not performance_path:
+        raise click.UsageError("--performance option is required")
+
+    format_type = OutputFormat(ctx.obj.get("format", "table"))
+    formatter = OutputFormatter(format_type)
+
+    try:
+        perf_data = PerfCSV(performance_path)
+        if not perf_data.is_valid():
+            raise click.ClickException("No valid performance CSV found")
+    except Exception as e:
+        raise click.ClickException(str(e))
+
+    ops = perf_data.get_operations(limit=limit)
+    # Filter out signpost rows
+    ops = [op for op in ops if op.op_name != "signpost"]
+    if not ops:
+        click.echo("No performance data found")
+        return
+
+    if format_type == OutputFormat.JSON:
+        data = [op.to_dict() for op in ops]
+        click.echo(formatter.format_output(data, title="Performance Report"))
+        return
+    elif format_type == OutputFormat.CSV:
+        data = [op.to_dict() for op in ops]
+        click.echo(formatter.format_output(data))
+        return
+
+    # Table format with detailed columns
+    headers = [
+        "ID",
+        "Total",
+        "Bound",
+        "Op Code",
+        "Device ID",
+        "Buffer Type",
+        "Layout",
+        "Device Time",
+        "Op-to-Op Gap",
+        "Cores",
+        "DRAM",
+        "DRAM %",
+        "FLOPs",
+        "FLOPs %",
+        "Math Fidelity",
+    ]
+
+    rows = []
+    total_device_time = 0.0
+    total_op_to_op_gap = 0.0
+
+    for i, op in enumerate(ops, 1):
+        total_device_time += op.execution_time_ns
+        total_op_to_op_gap += op.op_to_op_gap_ns
+
+        # Format DRAM bandwidth
+        dram_bw = op.dram_bandwidth
+        dram_str = f"{dram_bw:.1f}" if dram_bw is not None else "-"
+
+        # Format FLOPs
+        flops = op.flops
+        flops_str = f"{flops:.0f}" if flops is not None else "-"
+
+        rows.append([
+            op.global_call_count if op.global_call_count else i,
+            i,  # Total (row number)
+            op.bound if op.bound else "-",
+            op.op_code if op.op_code else "-",
+            op.device_id,
+            op.buffer_type if op.buffer_type else "-",
+            op.layout if op.layout else "-",
+            format_ns(op.execution_time_ns),
+            format_ns(op.op_to_op_gap_ns) if op.op_to_op_gap_ns > 0 else "-",
+            op.core_count if op.core_count else "-",
+            dram_str,
+            f"{op.dram_bw_util_percent:.1f}" if op.dram_bw_util_percent else "-",
+            flops_str,
+            f"{op.fpu_util_percent:.1f}" if op.fpu_util_percent else "-",
+            op.math_fidelity if op.math_fidelity else "-",
+        ])
+
+    # Add summary row with proper column alignment
+    summary_row = [
+        "Total",                                      # ID
+        len(ops),                                     # Total
+        "",                                           # Bound
+        f"{len(set(op.op_code for op in ops))} types",  # Op Code
+        "",                                           # Device ID
+        "",                                           # Buffer Type
+        "",                                           # Layout
+        format_ns(total_device_time),                 # Device Time
+        format_ns(total_op_to_op_gap),                # Op-to-Op Gap
+        "",                                           # Cores
+        "",                                           # DRAM
+        "",                                           # DRAM %
+        "",                                           # FLOPs
+        "",                                           # FLOPs %
+        "",                                           # Math Fidelity
+    ]
+
+    click.echo("Performance Report")
+    click.echo("=" * 18)
+    click.echo()
+    # Add rows with summary
+    all_rows = rows + [["─" * 8] * len(headers), summary_row]
+    click.echo(tabulate(all_rows, headers=headers, tablefmt="simple"))

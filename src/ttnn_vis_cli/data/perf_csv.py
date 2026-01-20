@@ -75,7 +75,7 @@ class PerfCSV:
         # Map columns to standard names
         column_mapping = {
             "op_code": ["op_code", "opcode", "op"],
-            "op_name": ["op_name", "name", "operation_name"],
+            "op_name": ["op_name", "name", "operation_name", "op_type"],
             "device_id": ["device_id", "device"],
             "core_count": ["core_count", "cores", "num_cores"],
             "parallelization_strategy": ["parallelization_strategy", "strategy"],
@@ -88,7 +88,7 @@ class PerfCSV:
                 "exec_time_ns",
                 "duration_ns",
             ],
-            "host_time_ns": ["host_time_ns", "host_duration_ns"],
+            "host_time_ns": ["host_time_ns", "host_duration_ns", "host_duration_[ns]"],
             "math_utilization": [
                 "math_utilization",
                 "math_util",
@@ -110,6 +110,16 @@ class PerfCSV:
             "pm_ideal_ns": ["pm_ideal_[ns]", "pm_ideal_ns"],
             "pm_compute_ns": ["pm_compute_[ns]", "pm_compute_ns"],
             "pm_bandwidth_ns": ["pm_bandwidth_[ns]", "pm_bandwidth_ns"],
+            # New fields for performance report
+            "global_call_count": ["global_call_count"],
+            "op_to_op_gap_ns": ["op_to_op_latency_[ns]", "op_to_op_latency_ns"],
+            "input_0_memory": ["input_0_memory"],
+            "input_0_layout": ["input_0_layout"],
+            "math_fidelity": ["math_fidelity"],
+            "dram_bw_util_percent": ["dram_bw_util_(%)", "dram_bw_util_(%)"],
+            "fpu_util_percent": ["pm_fpu_util_(%)", "pm_fpu_util_(%)"],
+            "pm_req_i_bw": ["pm_req_i_bw"],
+            "pm_req_o_bw": ["pm_req_o_bw"],
         }
 
         # Create normalized dataframe
@@ -126,6 +136,10 @@ class PerfCSV:
         operations = []
         for idx in range(len(df)):
             try:
+                # Extract buffer type from memory config string
+                buffer_type = self._extract_buffer_type(
+                    self._get_value(normalized_data, "input_0_memory", idx, "")
+                )
                 op = OperationPerf(
                     op_code=self._get_value(normalized_data, "op_code", idx, ""),
                     op_name=self._get_value(normalized_data, "op_name", idx, ""),
@@ -165,6 +179,28 @@ class PerfCSV:
                     ),
                     pm_bandwidth_ns=self._get_optional_float(
                         normalized_data, "pm_bandwidth_ns", idx
+                    ),
+                    # New fields
+                    global_call_count=self._get_optional_int(
+                        normalized_data, "global_call_count", idx
+                    ),
+                    op_to_op_gap_ns=float(
+                        self._get_value(normalized_data, "op_to_op_gap_ns", idx, 0)
+                    ),
+                    buffer_type=buffer_type,
+                    layout=self._get_value(normalized_data, "input_0_layout", idx, ""),
+                    math_fidelity=self._get_value(normalized_data, "math_fidelity", idx, ""),
+                    dram_bw_util_percent=float(
+                        self._get_value(normalized_data, "dram_bw_util_percent", idx, 0)
+                    ),
+                    fpu_util_percent=float(
+                        self._get_value(normalized_data, "fpu_util_percent", idx, 0)
+                    ),
+                    pm_req_i_bw=self._get_optional_float(
+                        normalized_data, "pm_req_i_bw", idx
+                    ),
+                    pm_req_o_bw=self._get_optional_float(
+                        normalized_data, "pm_req_o_bw", idx
                     ),
                 )
                 operations.append(op)
@@ -206,6 +242,33 @@ class PerfCSV:
             return float(val)
         except (IndexError, ValueError, AttributeError):
             return None
+
+    def _get_optional_int(
+        self, data: dict, key: str, idx: int
+    ) -> Optional[int]:
+        """Get an optional int value."""
+        if data.get(key) is None:
+            return None
+        try:
+            val = data[key].iloc[idx]
+            if pd.isna(val):
+                return None
+            return int(val)
+        except (IndexError, ValueError, AttributeError):
+            return None
+
+    def _extract_buffer_type(self, memory_str: str) -> str:
+        """Extract buffer type from memory config string like 'DEV_1_L1_HEIGHT_SHARDED'."""
+        if not memory_str:
+            return ""
+        memory_str = str(memory_str).upper()
+        if "DRAM" in memory_str:
+            return "DRAM"
+        elif "L1" in memory_str:
+            return "L1"
+        elif "SYSTEM_MEMORY" in memory_str:
+            return "System"
+        return memory_str
 
     def get_summary(self) -> dict:
         """Get performance summary statistics."""

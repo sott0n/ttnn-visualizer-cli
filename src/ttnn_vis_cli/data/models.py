@@ -258,6 +258,42 @@ class OperationPerf:
     pm_compute_ns: Optional[float] = None
     pm_bandwidth_ns: Optional[float] = None
     operation_id: Optional[int] = None
+    # New fields for performance report
+    global_call_count: Optional[int] = None
+    op_to_op_gap_ns: float = 0.0
+    buffer_type: str = ""
+    layout: str = ""
+    math_fidelity: str = ""
+    dram_bw_util_percent: float = 0.0
+    fpu_util_percent: float = 0.0
+    pm_req_i_bw: Optional[float] = None
+    pm_req_o_bw: Optional[float] = None
+
+    @property
+    def bound(self) -> str:
+        """Determine if operation is compute or memory bound."""
+        if self.pm_compute_ns is None or self.pm_bandwidth_ns is None:
+            return ""
+        if self.pm_compute_ns == 0 and self.pm_bandwidth_ns == 0:
+            return ""
+        if self.pm_compute_ns > self.pm_bandwidth_ns:
+            return "Compute"
+        elif self.pm_bandwidth_ns > self.pm_compute_ns:
+            return "Memory"
+        return "Balanced"
+
+    @property
+    def dram_bandwidth(self) -> Optional[float]:
+        """Get total DRAM bandwidth (input + output)."""
+        if self.pm_req_i_bw is not None and self.pm_req_o_bw is not None:
+            return self.pm_req_i_bw + self.pm_req_o_bw
+        return None
+
+    @property
+    def flops(self) -> Optional[float]:
+        """Calculate FLOPs from compute metrics."""
+        # FLOPs can be derived from pm_compute_ns if available
+        return self.pm_compute_ns
 
     def to_dict(self) -> dict:
         """Convert to dictionary for JSON output."""
@@ -280,6 +316,14 @@ class OperationPerf:
             "pm_compute_ns": self.pm_compute_ns,
             "pm_bandwidth_ns": self.pm_bandwidth_ns,
             "operation_id": self.operation_id,
+            "global_call_count": self.global_call_count,
+            "op_to_op_gap_ns": self.op_to_op_gap_ns,
+            "buffer_type": self.buffer_type,
+            "layout": self.layout,
+            "math_fidelity": self.math_fidelity,
+            "dram_bw_util_percent": self.dram_bw_util_percent,
+            "fpu_util_percent": self.fpu_util_percent,
+            "bound": self.bound,
         }
 
 
