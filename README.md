@@ -120,6 +120,17 @@ For detailed command documentation and examples, see:
 | `perf analysis conv` | Conv operations analysis |
 | `perf analysis bottlenecks` | Bottleneck detection |
 | `perf analysis summary` | Overall analysis summary |
+| `sharding summary` | Sharding strategy analysis |
+| `sharding distribution` | Sharding distribution |
+| `sharding tensors` | Tensor sharding details |
+| `sharding reshards` | Detect potential resharding |
+| `host-overhead summary` | Host vs device time analysis |
+| `host-overhead top` | Top operations by overhead |
+| `host-overhead distribution` | Overhead distribution |
+| `dtype-analysis summary` | Data format analysis |
+| `dtype-analysis dtypes` | Data type distribution |
+| `dtype-analysis layouts` | Layout distribution |
+| `dtype-analysis fidelity` | Math fidelity distribution |
 | `tui` | Interactive TUI for data browsing |
 
 ## Development

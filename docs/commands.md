@@ -13,6 +13,9 @@ Detailed documentation for all TTNN Visualizer CLI commands.
 - [L1 Memory Report](#l1-memory-report)
 - [Performance](#performance)
 - [Performance Analysis](#performance-analysis)
+- [Sharding Analysis](#sharding-analysis)
+- [Host Overhead Analysis](#host-overhead-analysis)
+- [Data Format Analysis](#data-format-analysis)
 - [Output Formats](#output-formats)
 
 ## Interactive TUI
@@ -556,6 +559,274 @@ Utilization:
 Potential Issues:
   - 88 operations with <50% efficiency
   - 60 operations with op-to-op gap >100ms
+```
+
+## Sharding Analysis
+
+Analyze tensor sharding strategies and detect potential resharding operations.
+
+### Sharding Summary
+
+```bash
+uv run ttnn-vis-cli sharding -p /path/to/db.sqlite summary
+```
+
+Output:
+```
+=== Sharding Analysis Summary ===
+
+Distribution:
+  INTERLEAVED:    400 (58.5%)
+  HEIGHT_SHARDED: 150 (21.9%)
+  WIDTH_SHARDED:   80 (11.7%)
+  BLOCK_SHARDED:   54 (7.9%)
+
+Buffer Types:
+  L1:   330 (48.2%)
+  DRAM: 354 (51.8%)
+
+Key Metrics:
+  Total Tensors:     684
+  Sharded Tensors:   284 (41.5%)
+  Interleaved:       400 (58.5%)
+
+Recommendations:
+  - High interleaved usage (58.5%): Consider sharding large tensors to improve parallelism
+```
+
+### Sharding Distribution
+
+```bash
+uv run ttnn-vis-cli sharding -p /path/to/db.sqlite distribution
+```
+
+Output:
+```
+Sharding Strategy Distribution:
+
+Strategy          Count  Percent
+--------------  -------  ---------
+INTERLEAVED         400  58.5%
+HEIGHT_SHARDED      150  21.9%
+WIDTH_SHARDED        80  11.7%
+BLOCK_SHARDED        54  7.9%
+```
+
+### Tensor Sharding Details
+
+```bash
+# List all tensors with sharding info
+uv run ttnn-vis-cli sharding -p /path/to/db.sqlite tensors
+
+# Filter by sharding strategy
+uv run ttnn-vis-cli sharding -p /path/to/db.sqlite tensors --strategy HEIGHT_SHARDED
+
+# Filter by buffer type
+uv run ttnn-vis-cli sharding -p /path/to/db.sqlite tensors --buffer-type L1
+```
+
+### Reshard Detection
+
+Detect operations where input tensors have different sharding strategies (potential resharding).
+
+```bash
+uv run ttnn-vis-cli sharding -p /path/to/db.sqlite reshards
+```
+
+Output:
+```
+Potential Reshard Operations:
+
+Op ID  Op Name              Input Shardings
+-----  -------------------  ----------------------------------------
+   15  ttnn.matmul          HEIGHT_SHARDED -> INTERLEAVED
+   23  ttnn.add             BLOCK_SHARDED -> WIDTH_SHARDED
+   45  ttnn.linear          INTERLEAVED -> HEIGHT_SHARDED
+
+Total: 3 potential reshard operations detected
+
+Recommendations:
+  - Review operations with mixed sharding strategies
+  - Consider unifying sharding to reduce data movement
+```
+
+### Operation Sharding
+
+```bash
+uv run ttnn-vis-cli sharding -p /path/to/db.sqlite operations
+```
+
+## Host Overhead Analysis
+
+Analyze host vs device time to identify host-bound models and recommend Metal Trace.
+
+### Host Overhead Summary
+
+```bash
+uv run ttnn-vis-cli host-overhead -P /path/to/perf-report summary
+```
+
+Output:
+```
+=== Host Overhead Analysis ===
+
+Timing Summary:
+  Total Device Time:    1.103 ms
+  Total Op-to-Op Gap:   47.907 s
+  Total E2E Time:       47.908 s
+  Host Overhead:        99.9%
+  Device Utilization:   0.1%
+
+Statistics:
+  Operation Count:      68
+  Avg Op-to-Op Gap:     704.519 ms
+  Max Op-to-Op Gap:     981.528 ms
+
+Recommendations:
+  - Model is HOST-BOUND (99.9% overhead): Device is waiting for host dispatch
+  - METAL TRACE RECOMMENDED: Capture and replay operations to eliminate host overhead
+  - Prerequisites: All tensor shapes must be static, same operations run repeatedly
+```
+
+### Top Overhead Operations
+
+```bash
+# Show top 20 operations with highest op-to-op gap
+uv run ttnn-vis-cli host-overhead -P /path/to/perf-report top
+
+# Limit to top 10
+uv run ttnn-vis-cli host-overhead -P /path/to/perf-report top --limit 10
+```
+
+Output:
+```
+Top 20 Operations by Op-to-Op Gap:
+
+Op Code                  Op Name    Device Time    Gap Time    Overhead %    Cores
+---------------------  ---------  -------------  ----------  ------------  -------
+ttnn::matmul           matmul         64.531 µs   981.528 ms        99.9%       64
+ttnn::add              add            12.345 µs   850.234 ms        99.9%       64
+...
+
+Recommendations:
+  - Operations with high gaps indicate host dispatch latency
+  - Consider Metal Trace to eliminate host overhead
+```
+
+### Overhead Distribution
+
+```bash
+uv run ttnn-vis-cli host-overhead -P /path/to/perf-report distribution
+```
+
+Output:
+```
+Host Overhead Distribution:
+
+Range       Count  Percent
+--------  -------  ---------
+0-10%           5  7.4%
+10-20%          3  4.4%
+20-30%          2  2.9%
+30-50%          8  11.8%
+50%+           50  73.5%
+```
+
+## Data Format Analysis
+
+Analyze tensor data types, layouts, and math fidelity settings for optimization.
+
+### Data Format Summary
+
+```bash
+# Basic summary with profiler data
+uv run ttnn-vis-cli dtype-analysis -p /path/to/db.sqlite summary
+
+# Include math fidelity analysis with performance data
+uv run ttnn-vis-cli dtype-analysis -p /path/to/db.sqlite -P /path/to/perf-report summary
+```
+
+Output:
+```
+=== Data Format Analysis ===
+
+Data Type Distribution:
+  BFLOAT8_B: 549 (80.3%)
+  FLOAT32: 107 (15.6%)
+  BFLOAT16: 28 (4.1%)
+
+Layout Distribution:
+  TILE: 555 (81.1%)
+  ROW_MAJOR: 129 (18.9%)
+
+Key Metrics:
+  Total Tensors:      684
+  bfloat8_b Usage:    80.3%
+  TILE Layout Usage:  81.1%
+
+Math Fidelity Distribution:
+  LoFi: 55 (56.1%)
+  HiFi4: 43 (43.9%)
+
+Recommendations:
+  - 107 tensors use FLOAT32: Consider BFLOAT16 for activations to reduce memory
+  - 43 operations use HiFi4: HiFi4 has lowest throughput, consider HiFi2/HiFi3 if precision allows
+```
+
+### Data Type Distribution
+
+```bash
+uv run ttnn-vis-cli dtype-analysis -p /path/to/db.sqlite dtypes
+```
+
+Output:
+```
+Data Type Distribution:
+
+Data Type      Count  Percent
+-----------  -------  ---------
+BFLOAT8_B        549  80.3%
+FLOAT32          107  15.6%
+BFLOAT16          28  4.1%
+```
+
+### Layout Distribution
+
+```bash
+uv run ttnn-vis-cli dtype-analysis -p /path/to/db.sqlite layouts
+```
+
+Output:
+```
+Layout Distribution:
+
+Layout       Count  Percent
+---------  -------  ---------
+TILE           555  81.1%
+ROW_MAJOR      129  18.9%
+```
+
+### Math Fidelity Distribution
+
+Analyze math fidelity settings from performance data.
+
+```bash
+uv run ttnn-vis-cli dtype-analysis -P /path/to/perf-report fidelity
+```
+
+Output:
+```
+Math Fidelity Distribution:
+
+Fidelity      Count  Percent
+----------  -------  ---------
+LoFi             55  56.1%
+HiFi4            43  43.9%
+
+Total operations with fidelity data: 98
+
+Recommendations:
+  - 43 operations use HiFi4: HiFi4 has lowest throughput, consider HiFi2/HiFi3 if precision allows
 ```
 
 ## Output Formats
