@@ -1,5 +1,8 @@
 """Main CLI entry point for TTNN Visualizer CLI."""
 
+from pathlib import Path
+from typing import Optional
+
 import click
 
 from .commands import devices, info, l1, memory, operations, perf, tensors
@@ -43,6 +46,47 @@ cli.add_command(memory.memory)
 cli.add_command(memory.buffers)
 cli.add_command(perf.perf)
 cli.add_command(l1.l1_report, name="l1-report")
+
+
+@cli.command()
+@click.option(
+    "--profiler",
+    "-p",
+    type=click.Path(exists=True, path_type=Path),
+    help="Path to profiler SQLite database (db.sqlite)",
+)
+@click.option(
+    "--performance",
+    "-P",
+    type=click.Path(exists=True, path_type=Path),
+    help="Path to performance report directory or CSV file",
+)
+def tui(profiler: Optional[Path], performance: Optional[Path]) -> None:
+    """Launch interactive TUI for browsing profiling data.
+
+    Example:
+        ttnn-vis-cli tui --profiler samples/profiler/db.sqlite
+        ttnn-vis-cli tui -p samples/profiler/db.sqlite -P samples/performance
+    """
+    try:
+        from .tui import TTNNVisualizerApp
+    except ImportError:
+        click.echo(
+            "Error: TUI dependencies not installed.\n"
+            "Install with: pip install ttnn-vis-cli[tui]",
+            err=True,
+        )
+        raise SystemExit(1)
+
+    if not profiler and not performance:
+        click.echo(
+            "Error: At least one of --profiler or --performance is required.",
+            err=True,
+        )
+        raise SystemExit(1)
+
+    app = TTNNVisualizerApp(profiler_db=profiler, perf_data=performance)
+    app.run()
 
 
 def main() -> None:

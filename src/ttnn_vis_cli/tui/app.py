@@ -1,0 +1,119 @@
+"""Main TUI application for TTNN Visualizer."""
+
+from pathlib import Path
+from typing import Optional
+
+from textual.app import App, ComposeResult
+from textual.binding import Binding
+from textual.containers import Container
+from textual.widgets import Footer, Header, Static, TabbedContent, TabPane
+
+
+class DashboardTab(Static):
+    """Dashboard tab placeholder."""
+
+    def compose(self) -> ComposeResult:
+        yield Static("Dashboard - Coming in Phase 2", id="dashboard-content")
+
+
+class OperationsTab(Static):
+    """Operations tab placeholder."""
+
+    def compose(self) -> ComposeResult:
+        yield Static("Operations Browser - Coming in Phase 3", id="operations-content")
+
+
+class TensorsTab(Static):
+    """Tensors tab placeholder."""
+
+    def compose(self) -> ComposeResult:
+        yield Static("Tensors Browser - Coming in Phase 3", id="tensors-content")
+
+
+class PerformanceTab(Static):
+    """Performance tab placeholder."""
+
+    def compose(self) -> ComposeResult:
+        yield Static("Performance Analysis - Coming in Phase 4", id="performance-content")
+
+
+class TTNNVisualizerApp(App):
+    """TTNN Visualizer TUI Application."""
+
+    CSS_PATH = "styles/app.tcss"
+    TITLE = "TTNN Visualizer"
+    SUB_TITLE = "TUI"
+
+    BINDINGS = [
+        Binding("q", "quit", "Quit"),
+        Binding("d", "switch_tab('dashboard')", "Dashboard", show=False),
+        Binding("o", "switch_tab('operations')", "Operations", show=False),
+        Binding("t", "switch_tab('tensors')", "Tensors", show=False),
+        Binding("p", "switch_tab('performance')", "Performance", show=False),
+        Binding("?", "show_help", "Help"),
+    ]
+
+    def __init__(
+        self,
+        profiler_db: Optional[Path] = None,
+        perf_data: Optional[Path] = None,
+    ):
+        """Initialize the TUI application.
+
+        Args:
+            profiler_db: Path to the profiler SQLite database.
+            perf_data: Path to the performance data directory.
+        """
+        super().__init__()
+        self.profiler_db = profiler_db
+        self.perf_data = perf_data
+
+    def compose(self) -> ComposeResult:
+        """Compose the application layout."""
+        yield Header()
+        with TabbedContent(initial="dashboard"):
+            with TabPane("Dashboard", id="dashboard"):
+                yield DashboardTab()
+            with TabPane("Operations", id="operations"):
+                yield OperationsTab()
+            with TabPane("Tensors", id="tensors"):
+                yield TensorsTab()
+            with TabPane("Performance", id="performance"):
+                yield PerformanceTab()
+        yield Footer()
+
+    def action_switch_tab(self, tab_id: str) -> None:
+        """Switch to the specified tab.
+
+        Args:
+            tab_id: The ID of the tab to switch to.
+        """
+        tabbed_content = self.query_one(TabbedContent)
+        tabbed_content.active = tab_id
+
+    def action_show_help(self) -> None:
+        """Show help dialog."""
+        self.notify(
+            "Keyboard shortcuts:\n"
+            "  d - Dashboard\n"
+            "  o - Operations\n"
+            "  t - Tensors\n"
+            "  p - Performance\n"
+            "  q - Quit",
+            title="Help",
+            timeout=5,
+        )
+
+
+def run_tui(
+    profiler_db: Optional[Path] = None,
+    perf_data: Optional[Path] = None,
+) -> None:
+    """Run the TUI application.
+
+    Args:
+        profiler_db: Path to the profiler SQLite database.
+        perf_data: Path to the performance data directory.
+    """
+    app = TTNNVisualizerApp(profiler_db=profiler_db, perf_data=perf_data)
+    app.run()

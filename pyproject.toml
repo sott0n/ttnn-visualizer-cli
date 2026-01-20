@@ -21,6 +21,9 @@ perf = [
 npe = [
     "zstandard",
 ]
+tui = [
+    "textual>=0.47.0",
+]
 
 [project.scripts]
 ttnn-vis-cli = "ttnn_vis_cli.cli:main"
