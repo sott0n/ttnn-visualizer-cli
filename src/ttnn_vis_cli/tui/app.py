@@ -2,11 +2,50 @@
 
 from pathlib import Path
 
+from textual import events
 from textual.app import App, ComposeResult
 from textual.binding import Binding
-from textual.widgets import Footer, Header, TabbedContent, TabPane
+from textual.containers import Vertical
+from textual.screen import ModalScreen
+from textual.widgets import Footer, Header, Static, TabbedContent, TabPane
 
 from .screens import DashboardScreen, OperationsScreen, PerformanceScreen, TensorsScreen
+
+HELP_TEXT = """\
+[bold cyan]Navigation[/bold cyan]
+  d - Dashboard tab
+  o - Operations tab
+  t - Tensors tab
+  p - Performance tab
+  Tab - Next tab
+
+[bold cyan]Table[/bold cyan]
+  ↑/↓ - Navigate rows
+  Enter - Select row
+
+[bold cyan]General[/bold cyan]
+  ? - This help
+  q - Quit
+
+[dim]Press any key to close[/dim]"""
+
+
+class HelpScreen(ModalScreen[None]):
+    """Modal help screen."""
+
+    BINDINGS = [
+        Binding("escape", "dismiss", "Close", show=False),
+    ]
+
+    def compose(self) -> ComposeResult:
+        """Compose the help screen."""
+        with Vertical(id="help-dialog"):
+            yield Static("[bold]Help[/bold]", id="help-title")
+            yield Static(HELP_TEXT, id="help-content", markup=True)
+
+    def on_key(self, event: events.Key) -> None:
+        """Dismiss on any key press."""
+        self.dismiss()
 
 
 class TTNNVisualizerApp(App):
@@ -72,24 +111,10 @@ class TTNNVisualizerApp(App):
 
     def action_show_help(self) -> None:
         """Show help dialog."""
-        self.notify(
-            "Navigation:\n"
-            "  d - Dashboard tab\n"
-            "  o - Operations tab\n"
-            "  t - Tensors tab\n"
-            "  p - Performance tab\n"
-            "  Tab - Next tab\n"
-            "\n"
-            "Table:\n"
-            "  ↑/↓ - Navigate rows\n"
-            "  Enter - Select row\n"
-            "\n"
-            "General:\n"
-            "  ? - This help\n"
-            "  q - Quit",
-            title="Help",
-            timeout=10,
-        )
+        # Don't show if already showing
+        if isinstance(self.screen, HelpScreen):
+            return
+        self.push_screen(HelpScreen())
 
 
 def run_tui(

@@ -8,7 +8,10 @@ from typing import TYPE_CHECKING
 
 from textual.app import ComposeResult
 from textual.containers import Container, Horizontal, Vertical
+from textual.css.query import NoMatches
 from textual.widgets import DataTable, Static
+
+from ..utils import escape_markup, format_time_ns
 
 if TYPE_CHECKING:
     from ttnn_vis_cli.data.models import OperationPerf
@@ -20,24 +23,6 @@ logger = logging.getLogger(__name__)
 # Display constants
 MAX_OP_CODE_LENGTH = 30
 MAX_SHAPES_LENGTH = 50
-
-
-def format_time_ns(time_ns: float) -> str:
-    """Format time in nanoseconds to human readable string.
-
-    Args:
-        time_ns: Time in nanoseconds.
-
-    Returns:
-        Human readable time string.
-    """
-    if time_ns == 0:
-        return "0 ns"
-    if time_ns < 1000:
-        return f"{time_ns:.0f} ns"
-    if time_ns < 1_000_000:
-        return f"{time_ns / 1000:.2f} µs"
-    return f"{time_ns / 1_000_000:.2f} ms"
 
 
 def format_percent(value: float) -> str:
@@ -93,6 +78,15 @@ class PerformanceScreen(Container):
         self._init_perf_data()
         self._load_operations()
 
+    def on_show(self) -> None:
+        """Focus the table when shown."""
+        try:
+            table = self.query_one("#performance-table", DataTable)
+            table.focus()
+        except NoMatches:
+            # Table not yet mounted or not available
+            pass
+
     def _init_perf_data(self) -> None:
         """Initialize the performance data sources."""
         if not self._perf_data_path:
@@ -137,10 +131,10 @@ class PerformanceScreen(Container):
 
                 table.add_row(
                     call_id,
-                    op_code,
+                    escape_markup(op_code),
                     format_time_ns(op.execution_time_ns),
                     format_percent(op.fpu_util_percent),
-                    op.bound or "-",
+                    escape_markup(op.bound) if op.bound else "-",
                     str(op.core_count) if op.core_count > 0 else "-",
                     key=str(idx),
                 )
@@ -202,13 +196,13 @@ class PerformanceScreen(Container):
         try:
             op = self._operations[op_idx]
 
-            # Build detail content
+            # Build detail content (escape user data to prevent markup errors)
             call_id = op.global_call_count if op.global_call_count is not None else op_idx + 1
             lines = [
                 f"[bold]Operation {call_id}[/bold]",
                 "",
-                f"[cyan]Op Code:[/cyan] {op.op_code}",
-                f"[cyan]Op Name:[/cyan] {op.op_name}",
+                f"[cyan]Op Code:[/cyan] {escape_markup(op.op_code)}",
+                f"[cyan]Op Name:[/cyan] {escape_markup(op.op_name)}",
                 f"[cyan]Device Time:[/cyan] {format_time_ns(op.execution_time_ns)}",
             ]
 
@@ -225,7 +219,7 @@ class PerformanceScreen(Container):
                 lines.append(f"  • Cores: {op.core_count}")
 
             if op.bound:
-                lines.append(f"  • Bound: {op.bound}")
+                lines.append(f"  • Bound: {escape_markup(op.bound)}")
 
             if op.fpu_util_percent > 0:
                 lines.append(f"  • FPU Util: {op.fpu_util_percent:.1f}%")
@@ -252,9 +246,9 @@ class PerformanceScreen(Container):
                 lines.append("")
                 lines.append("[cyan]Memory:[/cyan]")
                 if op.buffer_type:
-                    lines.append(f"  • Buffer Type: {op.buffer_type}")
+                    lines.append(f"  • Buffer Type: {escape_markup(op.buffer_type)}")
                 if op.layout:
-                    lines.append(f"  • Layout: {op.layout}")
+                    lines.append(f"  • Layout: {escape_markup(op.layout)}")
 
             # Shapes
             if op.input_shapes or op.output_shapes:
@@ -264,12 +258,12 @@ class PerformanceScreen(Container):
                     shapes = op.input_shapes[:MAX_SHAPES_LENGTH]
                     if len(op.input_shapes) > MAX_SHAPES_LENGTH:
                         shapes += "..."
-                    lines.append(f"  • Input: {shapes}")
+                    lines.append(f"  • Input: {escape_markup(shapes)}")
                 if op.output_shapes:
                     shapes = op.output_shapes[:MAX_SHAPES_LENGTH]
                     if len(op.output_shapes) > MAX_SHAPES_LENGTH:
                         shapes += "..."
-                    lines.append(f"  • Output: {shapes}")
+                    lines.append(f"  • Output: {escape_markup(shapes)}")
 
             detail.update("\n".join(lines))
 

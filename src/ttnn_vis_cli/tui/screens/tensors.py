@@ -8,7 +8,10 @@ from typing import TYPE_CHECKING
 
 from textual.app import ComposeResult
 from textual.containers import Container, Horizontal, Vertical
+from textual.css.query import NoMatches
 from textual.widgets import DataTable, Static
+
+from ..utils import escape_markup
 
 if TYPE_CHECKING:
     from ttnn_vis_cli.data.models import Tensor
@@ -67,6 +70,15 @@ class TensorsScreen(Container):
         self._init_db()
         self._load_tensors()
 
+    def on_show(self) -> None:
+        """Focus the table when shown."""
+        try:
+            table = self.query_one("#tensors-table", DataTable)
+            table.focus()
+        except NoMatches:
+            # Table not yet mounted or not available
+            pass
+
     def _init_db(self) -> None:
         """Initialize the database connection."""
         if not self._profiler_db_path:
@@ -103,10 +115,10 @@ class TensorsScreen(Container):
 
                 table.add_row(
                     str(t.id),
-                    shape,
-                    t.dtype,
-                    t.layout,
-                    memory,
+                    escape_markup(shape),
+                    escape_markup(t.dtype),
+                    escape_markup(t.layout),
+                    escape_markup(memory),
                     key=str(t.id),
                 )
 
@@ -137,20 +149,20 @@ class TensorsScreen(Container):
                 detail.update(f"[red]Tensor {tensor_id} not found[/red]")
                 return
 
-            # Build detail content
+            # Build detail content (escape user data to prevent markup errors)
             lines = [
                 f"[bold]Tensor {tensor.id}[/bold]",
                 "",
-                f"[cyan]Shape:[/cyan] {tensor.shape}",
-                f"[cyan]Dtype:[/cyan] {tensor.dtype}",
-                f"[cyan]Layout:[/cyan] {tensor.layout}",
+                f"[cyan]Shape:[/cyan] {escape_markup(tensor.shape)}",
+                f"[cyan]Dtype:[/cyan] {escape_markup(tensor.dtype)}",
+                f"[cyan]Layout:[/cyan] {escape_markup(tensor.layout)}",
             ]
 
             if tensor.device_id is not None:
                 lines.append(f"[cyan]Device:[/cyan] {tensor.device_id}")
 
             if tensor.buffer_type:
-                lines.append(f"[cyan]Memory Type:[/cyan] {tensor.buffer_type}")
+                lines.append(f"[cyan]Memory Type:[/cyan] {escape_markup(tensor.buffer_type)}")
 
             if tensor.address is not None:
                 lines.append(f"[cyan]Address:[/cyan] {format_address(tensor.address)}")
@@ -172,9 +184,9 @@ class TensorsScreen(Container):
 
                 # Show full config if it's not too long
                 if len(config) <= MAX_CONFIG_LENGTH:
-                    lines.append(f"  • Full: {config}")
+                    lines.append(f"  • Full: {escape_markup(config)}")
                 else:
-                    lines.append(f"  • Full: {config[:MAX_CONFIG_LENGTH]}...")
+                    lines.append(f"  • Full: {escape_markup(config[:MAX_CONFIG_LENGTH])}...")
 
             detail.update("\n".join(lines))
 

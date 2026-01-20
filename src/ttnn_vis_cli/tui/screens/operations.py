@@ -8,7 +8,10 @@ from typing import TYPE_CHECKING
 
 from textual.app import ComposeResult
 from textual.containers import Container, Horizontal, Vertical
+from textual.css.query import NoMatches
 from textual.widgets import DataTable, Static
+
+from ..utils import escape_markup, format_time_ns
 
 if TYPE_CHECKING:
     from ttnn_vis_cli.data.models import Operation
@@ -20,26 +23,6 @@ logger = logging.getLogger(__name__)
 MAX_NAME_LENGTH = 50
 MAX_ARG_VALUE_LENGTH = 40
 MAX_DISPLAYED_ARGS = 10
-
-
-def format_duration(duration_ns: float | None) -> str:
-    """Format duration in nanoseconds to human readable string.
-
-    Args:
-        duration_ns: Duration in nanoseconds.
-
-    Returns:
-        Human readable duration string.
-    """
-    if duration_ns is None:
-        return "-"
-    if duration_ns == 0:
-        return "0 ns"
-    if duration_ns < 1000:
-        return f"{duration_ns:.0f} ns"
-    if duration_ns < 1_000_000:
-        return f"{duration_ns / 1000:.2f} µs"
-    return f"{duration_ns / 1_000_000:.2f} ms"
 
 
 class OperationsScreen(Container):
@@ -74,6 +57,15 @@ class OperationsScreen(Container):
         self._init_db()
         self._load_operations()
 
+    def on_show(self) -> None:
+        """Focus the table when shown."""
+        try:
+            table = self.query_one("#operations-table", DataTable)
+            table.focus()
+        except NoMatches:
+            # Table not yet mounted or not available
+            pass
+
     def _init_db(self) -> None:
         """Initialize the database connection."""
         if not self._profiler_db_path:
@@ -107,8 +99,8 @@ class OperationsScreen(Container):
                 name = op.name[:MAX_NAME_LENGTH] if len(op.name) > MAX_NAME_LENGTH else op.name
                 table.add_row(
                     str(op.id),
-                    name,
-                    format_duration(op.duration),
+                    escape_markup(name),
+                    format_time_ns(op.duration),
                     device_str,
                     key=str(op.id),
                 )
@@ -144,12 +136,12 @@ class OperationsScreen(Container):
             input_tensors = self._db.get_input_tensors(operation_id)
             output_tensors = self._db.get_output_tensors(operation_id)
 
-            # Build detail content
+            # Build detail content (escape user data to prevent markup errors)
             lines = [
                 f"[bold]Operation {operation.id}[/bold]",
                 "",
-                f"[cyan]Name:[/cyan] {operation.name}",
-                f"[cyan]Duration:[/cyan] {format_duration(operation.duration)}",
+                f"[cyan]Name:[/cyan] {escape_markup(operation.name)}",
+                f"[cyan]Duration:[/cyan] {format_time_ns(operation.duration)}",
                 f"[cyan]Device:[/cyan] {operation.device_id if operation.device_id is not None else '-'}",
             ]
 
@@ -157,13 +149,13 @@ class OperationsScreen(Container):
                 lines.append("")
                 lines.append("[cyan]Input Tensors:[/cyan]")
                 for t in input_tensors:
-                    lines.append(f"  • Tensor {t.id}: {t.shape} ({t.dtype})")
+                    lines.append(f"  • Tensor {t.id}: {escape_markup(t.shape)} ({escape_markup(t.dtype)})")
 
             if output_tensors:
                 lines.append("")
                 lines.append("[cyan]Output Tensors:[/cyan]")
                 for t in output_tensors:
-                    lines.append(f"  • Tensor {t.id}: {t.shape} ({t.dtype})")
+                    lines.append(f"  • Tensor {t.id}: {escape_markup(t.shape)} ({escape_markup(t.dtype)})")
 
             # Get operation arguments if available
             args = self._db.get_operation_arguments(operation_id)
@@ -172,7 +164,7 @@ class OperationsScreen(Container):
                 lines.append("[cyan]Arguments:[/cyan]")
                 for arg in args[:MAX_DISPLAYED_ARGS]:
                     value = arg.value[:MAX_ARG_VALUE_LENGTH] if len(arg.value) > MAX_ARG_VALUE_LENGTH else arg.value
-                    lines.append(f"  • {arg.name}: {value}")
+                    lines.append(f"  • {escape_markup(arg.name)}: {escape_markup(value)}")
                 if len(args) > MAX_DISPLAYED_ARGS:
                     lines.append(f"  ... and {len(args) - MAX_DISPLAYED_ARGS} more")
 

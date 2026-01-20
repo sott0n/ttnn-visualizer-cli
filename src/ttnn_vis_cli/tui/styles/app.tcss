@@ -108,3 +108,25 @@ PerformanceScreen {
 ProgressBar Bar {
     width: 1fr;
 }
+
+/* Help dialog styles */
+HelpScreen {
+    align: center middle;
+}
+
+#help-dialog {
+    width: 50;
+    height: auto;
+    padding: 1 2;
+    background: $surface;
+    border: solid $primary;
+}
+
+#help-title {
+    text-align: center;
+    padding-bottom: 1;
+}
+
+#help-content {
+    padding: 0;
+}
