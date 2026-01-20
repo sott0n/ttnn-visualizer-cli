@@ -1,6 +1,8 @@
 # TTNN Visualizer CLI
 
-CLI tool for TTNN profiling visualization and analysis.
+A Claude Code-friendly CLI tool for TTNN profiling visualization and analysis.
+
+This project is inspired by [ttnn-visualizer](https://github.com/tenstorrent/ttnn-visualizer). While ttnn-visualizer provides a rich web-based GUI, this CLI tool outputs text-based analysis that works seamlessly with Claude Code and other AI coding assistants.
 
 ## Installation
 
