@@ -16,6 +16,7 @@ Detailed documentation for all TTNN Visualizer CLI commands.
 - [Sharding Analysis](#sharding-analysis)
 - [Host Overhead Analysis](#host-overhead-analysis)
 - [Data Format Analysis](#data-format-analysis)
+- [Multi-CQ Analysis](#multi-cq-analysis)
 - [Output Formats](#output-formats)
 
 ## Interactive TUI
@@ -827,6 +828,197 @@ Total operations with fidelity data: 98
 
 Recommendations:
   - 43 operations use HiFi4: HiFi4 has lowest throughput, consider HiFi2/HiFi3 if precision allows
+```
+
+## Multi-CQ Analysis
+
+Analyze command queue usage and I/O overlap efficiency to determine if using 2 command queues (2CQ) would benefit performance.
+
+### Background
+
+TT hardware supports multiple command queues:
+- **1CQ (Single Command Queue)**: Default mode, operations execute sequentially
+- **2CQ (Two Command Queues)**: Allows overlapping I/O transfers with computation
+
+2CQ is beneficial when a model has significant I/O overhead from:
+- Dispatch CQ time (command queue operations)
+- Wait time (synchronization)
+- ERISC time (Ethernet RISC data transfers)
+
+### Multi-CQ Summary
+
+```bash
+uv run ttnn-vis-cli multi-cq -P /path/to/perf-report summary
+```
+
+Output:
+```
+=== Multi-CQ Analysis ===
+
+I/O Timing Summary:
+  Total Device Time:     1.103 ms
+  Total I/O Time:        0.250 ms
+    - Dispatch CQ Time:  0.150 ms
+    - Wait Time:         0.050 ms
+    - ERISC Time:        0.050 ms
+  I/O Overhead:          18.5%
+
+Analysis:
+  Total Operations:      68
+  I/O-bound Operations:  12 (17.6%)
+  Compute-bound:         56 (82.4%)
+
+Status:
+  Model Status:         COMPUTE-BOUND
+  2CQ Recommended:      NO
+
+Recommendations:
+  - Model is COMPUTE-BOUND (81.5% compute): Focus on kernel optimization rather than I/O overlap
+```
+
+**I/O-bound example:**
+```
+=== Multi-CQ Analysis ===
+
+I/O Timing Summary:
+  Total Device Time:     1.103 ms
+  Total I/O Time:        0.850 ms
+    - Dispatch CQ Time:  0.500 ms
+    - Wait Time:         0.200 ms
+    - ERISC Time:        0.150 ms
+  I/O Overhead:          43.5%
+
+Analysis:
+  Total Operations:      68
+  I/O-bound Operations:  45 (66.2%)
+  Compute-bound:         23 (33.8%)
+
+Status:
+  Model Status:         I/O-BOUND
+  2CQ Recommended:      YES
+
+Recommendations:
+  - Model is I/O-BOUND (43.5% I/O overhead): Device compute is waiting for data transfers
+  - 2CQ RECOMMENDED: Enable 2 command queues to overlap I/O with compute
+  - With 2CQ, one queue handles compute while the other handles data transfers
+  - Dispatch CQ time dominates I/O (59%): Consider batching operations to reduce command overhead
+  - 45 operations (66.2%) are I/O-bound: Focus optimization on these operations
+```
+
+### I/O-Bound Operations
+
+Show operations with highest I/O overhead, sorted by overhead percentage.
+
+```bash
+# Show top 20 I/O-bound operations (default)
+uv run ttnn-vis-cli multi-cq -P /path/to/perf-report io-bound
+
+# Limit to top 10
+uv run ttnn-vis-cli multi-cq -P /path/to/perf-report io-bound --limit 10
+```
+
+Output:
+```
+Top 20 I/O-Bound Operations:
+
+Op Code                  Device (us)    I/O (us)  I/O %      Dispatch    Wait    ERISC
+---------------------  -------------  ----------  -------  ----------  ------  -------
+ttnn::conv2d                    45.3        25.1  35.6%          15.0    10.1      0.0
+ttnn::matmul                    32.1        15.2  32.1%          10.0     5.2      0.0
+ttnn::add                       12.5         5.8  31.7%           3.5     2.3      0.0
+ttnn::linear                    28.4        12.1  29.9%           8.0     4.1      0.0
+...
+```
+
+Column descriptions:
+- **Device (us)**: Device kernel execution time in microseconds
+- **I/O (us)**: Total I/O time (dispatch + wait + ERISC)
+- **I/O %**: I/O time as percentage of total time
+- **Dispatch**: Dispatch CQ command time
+- **Wait**: Dispatch wait/synchronization time
+- **ERISC**: Ethernet RISC data transfer time
+
+### I/O Overhead Distribution
+
+Show distribution of operations by I/O overhead level.
+
+```bash
+uv run ttnn-vis-cli multi-cq -P /path/to/perf-report distribution
+```
+
+Output:
+```
+I/O Overhead Distribution:
+
+I/O Overhead Range      Count  Percent
+--------------------  -------  ---------
+0-10%                      40  58.8%
+10-20%                     15  22.1%
+20-30%                      8  11.8%
+30-50%                      3   4.4%
+50%+                        2   2.9%
+
+Total operations: 68
+```
+
+Interpretation:
+- **0-10%**: Compute-bound operations (minimal I/O overhead)
+- **10-20%**: Low I/O overhead (generally acceptable)
+- **20-30%**: Moderate I/O overhead (consider 2CQ)
+- **30-50%**: High I/O overhead (2CQ recommended)
+- **50%+**: Severely I/O-bound (2CQ strongly recommended)
+
+### Thresholds
+
+The analysis uses these thresholds:
+- **I/O Bottleneck Threshold (30%)**: Operations with >30% I/O overhead are considered I/O-bound
+- **2CQ Recommendation Threshold (20%)**: 2CQ is recommended if overall I/O overhead exceeds 20%
+- **I/O Dominance Threshold (50%)**: Identifies which I/O component (dispatch, wait, or ERISC) dominates
+
+### JSON Output
+
+```bash
+uv run ttnn-vis-cli --format json multi-cq -P /path/to/perf-report summary
+```
+
+Output:
+```json
+{
+  "total_operations": 68,
+  "total_device_time_ns": 1103000.0,
+  "total_device_time_ms": 1.103,
+  "total_io_time_ns": 250000.0,
+  "total_io_time_ms": 0.25,
+  "total_dispatch_cq_time_ns": 150000.0,
+  "total_dispatch_cq_time_ms": 0.15,
+  "total_wait_time_ns": 50000.0,
+  "total_wait_time_ms": 0.05,
+  "total_erisc_time_ns": 50000.0,
+  "total_erisc_time_ms": 0.05,
+  "total_compute_time_ns": 1053000.0,
+  "total_compute_time_ms": 1.053,
+  "io_overhead_percent": 18.5,
+  "is_io_bound": false,
+  "multi_cq_recommended": false,
+  "io_bound_operations": 12,
+  "recommendations": [
+    "Model is COMPUTE-BOUND (81.5% compute): Focus on kernel optimization rather than I/O overlap"
+  ]
+}
+```
+
+### CSV Output
+
+```bash
+uv run ttnn-vis-cli --format csv multi-cq -P /path/to/perf-report io-bound --limit 5
+```
+
+Output:
+```csv
+op_code,op_name,device_time_us,io_time_us,io_overhead_pct,dispatch_us,wait_us,erisc_us
+ttnn::conv2d,conv2d,45.30,25.10,35.6,15.00,10.10,0.00
+ttnn::matmul,matmul,32.10,15.20,32.1,10.00,5.20,0.00
+ttnn::add,add,12.50,5.80,31.7,3.50,2.30,0.00
 ```
 
 ## Output Formats

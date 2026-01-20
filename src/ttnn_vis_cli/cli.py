@@ -11,6 +11,7 @@ from .commands import (
     info,
     l1,
     memory,
+    multi_cq,
     operations,
     perf,
     sharding,
@@ -59,6 +60,7 @@ cli.add_command(l1.l1_report, name="l1-report")
 cli.add_command(sharding.sharding)
 cli.add_command(host_overhead.host_overhead, name="host-overhead")
 cli.add_command(dtype_analysis.dtype_analysis, name="dtype-analysis")
+cli.add_command(multi_cq.multi_cq, name="multi-cq")
 
 
 @cli.command()

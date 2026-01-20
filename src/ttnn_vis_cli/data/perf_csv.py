@@ -120,6 +120,19 @@ class PerfCSV:
             "fpu_util_percent": ["pm_fpu_util_(%)", "pm_fpu_util_(%)"],
             "pm_req_i_bw": ["pm_req_i_bw"],
             "pm_req_o_bw": ["pm_req_o_bw"],
+            # Multi-CQ analysis columns
+            "dispatch_cq_cmd_time_ns": [
+                "dispatch_total_cq_cmd_op_time_[ns]",
+                "dispatch_total_cq_cmd_op_time_ns",
+            ],
+            "dispatch_wait_time_ns": [
+                "dispatch_go_send_wait_time_[ns]",
+                "dispatch_go_send_wait_time_ns",
+            ],
+            "erisc_kernel_duration_ns": [
+                "device_erisc_kernel_duration_[ns]",
+                "device_erisc_kernel_duration_ns",
+            ],
         }
 
         # Create normalized dataframe
@@ -201,6 +214,16 @@ class PerfCSV:
                     ),
                     pm_req_o_bw=self._get_optional_float(
                         normalized_data, "pm_req_o_bw", idx
+                    ),
+                    # Multi-CQ analysis fields
+                    dispatch_cq_cmd_time_ns=float(
+                        self._get_value(normalized_data, "dispatch_cq_cmd_time_ns", idx, 0)
+                    ),
+                    dispatch_wait_time_ns=float(
+                        self._get_value(normalized_data, "dispatch_wait_time_ns", idx, 0)
+                    ),
+                    erisc_kernel_duration_ns=float(
+                        self._get_value(normalized_data, "erisc_kernel_duration_ns", idx, 0)
                     ),
                 )
                 operations.append(op)

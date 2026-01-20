@@ -268,6 +268,10 @@ class OperationPerf:
     fpu_util_percent: float = 0.0
     pm_req_i_bw: Optional[float] = None
     pm_req_o_bw: Optional[float] = None
+    # Multi-CQ analysis fields
+    dispatch_cq_cmd_time_ns: float = 0.0
+    dispatch_wait_time_ns: float = 0.0
+    erisc_kernel_duration_ns: float = 0.0
 
     @property
     def bound(self) -> str:
@@ -324,6 +328,9 @@ class OperationPerf:
             "dram_bw_util_percent": self.dram_bw_util_percent,
             "fpu_util_percent": self.fpu_util_percent,
             "bound": self.bound,
+            "dispatch_cq_cmd_time_ns": self.dispatch_cq_cmd_time_ns,
+            "dispatch_wait_time_ns": self.dispatch_wait_time_ns,
+            "erisc_kernel_duration_ns": self.erisc_kernel_duration_ns,
         }
 
 
