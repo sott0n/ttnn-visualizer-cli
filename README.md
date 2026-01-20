@@ -62,7 +62,9 @@ uv run ttnn-vis-cli perf --performance /path/to/perf-report analysis summary
 uv run ttnn-vis-cli perf --performance /path/to/perf-report analysis bottlenecks
 ```
 
-### Interactive TUI
+### Interactive TUI (Experimental)
+
+> **Note**: The TUI feature is experimental and may have limitations or bugs. Feedback is welcome.
 
 Launch an interactive terminal UI for browsing and exploring profiling data:
 
